@@ -1,19 +1,5 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+"""Tương thích ngược: re-export kết nối DB từ app.db.session để tránh lệch cấu hình."""
+from app.db.base import Base
+from app.db.session import SessionLocal, engine, get_db
 
-DATABASE_URL = "mysql+pymysql://root:21082005@localhost:3306/Ss22_db"
-
-engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(
-    autoflush= False,
-    autocommit =False,
-    bind= engine
-)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+__all__ = ["Base", "SessionLocal", "engine", "get_db"]
