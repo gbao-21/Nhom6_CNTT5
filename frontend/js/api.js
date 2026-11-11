@@ -50,6 +50,8 @@ http.interceptors.response.use(
     if (error.response) {
       // Server có trả lời nhưng là lỗi (4xx, 5xx)
       const { status, data } = error.response;
+      console.log(data);
+      
       return Promise.reject(new ApiError(getErrorMessage(data, status), status, data));
     }
     // Không có response: server tắt, sai URL, bị chặn CORS, hoặc quá thời gian chờ
