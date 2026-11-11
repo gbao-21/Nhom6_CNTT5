@@ -6,7 +6,7 @@ from app.models.category import Category
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish, DishOption
 from app.models.item import Item
-from app.models.order import Order, OrderItem
+from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.models.user import User
 
 __all__ = [
@@ -20,4 +20,5 @@ __all__ = [
     "CartItem",
     "Order",
     "OrderItem",
+    "OrderStatusHistory",
 ]
