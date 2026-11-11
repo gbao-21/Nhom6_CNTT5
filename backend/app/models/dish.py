@@ -28,7 +28,18 @@ class Dish(Base):
     description = Column(Text, nullable=True)
     price = Column(Numeric(15, 2), nullable=False, default=0, server_default="0")
     image_url = Column(String(500), nullable=True)
+
+    # is_available: True = còn món, False = hết món
     is_available = Column(Boolean, nullable=False, default=True, server_default="1")
+    # is_active: True = hiển thị trên menu, False = món bị ẩn
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    # status: AVAILABLE (còn bán), OUT_OF_STOCK (hết hàng), HIDDEN (ẩn)
+    status = Column(
+        String(30),
+        nullable=False,
+        default="AVAILABLE",
+        server_default="AVAILABLE",
+    )
 
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(
@@ -63,4 +74,3 @@ class DishOption(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
     dish = relationship("Dish", back_populates="options")
-

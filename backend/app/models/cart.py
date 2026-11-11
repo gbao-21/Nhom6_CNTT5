@@ -77,3 +77,4 @@ class CartItem(Base):
     )
 
     cart = relationship("Cart", back_populates="items")
+    dish = relationship("Dish")

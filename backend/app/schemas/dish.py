@@ -29,6 +29,8 @@ class DishBase(BaseModel):
     price: Decimal = Field(default=0, ge=0)
     image_url: str | None = Field(default=None, max_length=500)
     is_available: bool = True
+    is_active: bool = True
+    status: str = Field(default="AVAILABLE", max_length=30)
 
 
 class DishCreate(DishBase):
@@ -42,6 +44,8 @@ class DishUpdate(BaseModel):
     price: Decimal | None = Field(default=None, ge=0)
     image_url: str | None = Field(default=None, max_length=500)
     is_available: bool | None = None
+    is_active: bool | None = None
+    status: str | None = Field(default=None, max_length=30)
 
 
 class DishResponse(DishBase):
@@ -51,4 +55,3 @@ class DishResponse(DishBase):
     options: list[DishOptionResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
-
