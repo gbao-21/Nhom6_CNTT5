@@ -82,6 +82,12 @@ class Order(Base):
         back_populates="order",
         passive_deletes="all",
     )
+    status_history = relationship(
+        "OrderStatusHistory",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderStatusHistory.created_at.asc()",
+    )
 
 
 class OrderItem(Base):
@@ -123,3 +129,30 @@ class OrderItem(Base):
     )
 
     order = relationship("Order", back_populates="items")
+
+
+class OrderStatusHistory(Base):
+    __tablename__ = "order_status_histories"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(
+        Integer,
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    old_status = Column(String(30), nullable=True)
+    new_status = Column(String(30), nullable=False)
+    changed_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    note = Column(String(500), nullable=True)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    order = relationship("Order", back_populates="status_history")
+    user = relationship("User", foreign_keys=[changed_by])
