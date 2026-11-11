@@ -12,7 +12,16 @@ from sqlalchemy.exc import OperationalError
 from app import models  # noqa: F401 - import để SQLAlchemy biết các bảng
 from app.core.config import settings
 from app.db.session import Base, engine
-from app.routers import health, items
+from app.routers import (
+    carts,
+    categories,
+    delivery_areas,
+    dishes,
+    health,
+    items,
+    orders,
+    users,
+)
 
 
 @asynccontextmanager
@@ -43,6 +52,12 @@ app.add_middleware(
 # Mọi API đều bắt đầu bằng /api. Thêm router mới thì include ở đây.
 app.include_router(health.router, prefix="/api")
 app.include_router(items.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(categories.router, prefix="/api")
+app.include_router(dishes.router, prefix="/api")
+app.include_router(delivery_areas.router, prefix="/api")
+app.include_router(carts.router, prefix="/api")
+app.include_router(orders.router, prefix="/api")
 
 
 @app.get("/")
