@@ -163,3 +163,52 @@ Khi lỗi, API trả về JSON dạng `{"detail": "..."}`. Ví dụ: 404 khi kh�
 ## 11. (Không bắt buộc) Chạy MySQL bằng Docker
 
 Chỉ dành cho bạn nào đã biết Docker và không muốn cài MySQL. Trong `backend/` chạy `docker compose up -d`: MySQL chạy ở cổng **3307**, tự tạo bảng từ `sql/init.sql`. Khi đó sửa `.env` thành `DB_PORT=3307`, `DB_USER=app_user`, `DB_PASSWORD=app_password`.
+
+## 12. Quản lý Đơn hàng, Luồng trạng thái & Huỷ đơn
+
+### 12.1. Model `OrderStatusHistory`
+Lưu vết toàn bộ lịch sử thay đổi trạng thái của đơn hàng:
+- `id`: Khoá chính, INT tự tăng.
+- `order_id`: ID đơn hàng (`orders.id`).
+- `old_status`: Trạng thái trước khi chuyển (null khi đơn mới tạo).
+- `new_status`: Trạng thái mới được cập nhật.
+- `changed_by`: ID người thực hiện thay đổi (`users.id`).
+- `note`: Ghi chú hoặc lý do chuyển trạng thái / huỷ đơn.
+- `created_at`: Thời điểm chuyển trạng thái.
+
+### 12.2. Luồng trạng thái đơn hàng (Order Status Flow)
+Chốt luồng trạng thái chuẩn:
+```
+Chờ xác nhận (PENDING) ──> Đã xác nhận (CONFIRMED) ──> Đang chuẩn bị (PREPARING) ──> Đang giao (DELIVERING) ──> Hoàn thành (COMPLETED)
+       │                              │                              │
+       └──────────────────────────────┴──────────────────────────────┴───> Đã huỷ (CANCELLED)
+```
+
+#### Bảng chuyển trạng thái hợp lệ (Valid Transition Matrix):
+| Trạng thái hiện tại | Trạng thái tiếp theo hợp lệ | Mô tả & Quy tắc |
+|---|---|---|
+| `PENDING` (Chờ xác nhận) | `CONFIRMED`, `CANCELLED` | Nhân viên xác nhận đơn, hoặc khách/nhân viên huỷ đơn |
+| `CONFIRMED` (Đã xác nhận) | `PREPARING`, `CANCELLED` | Nhà hàng bắt đầu chuẩn bị món, hoặc nhân viên huỷ kèm lý do |
+| `PREPARING` (Đang chuẩn bị) | `DELIVERING`, `CANCELLED` | Bàn giao cho shipper giao hàng, hoặc nhân viên huỷ kèm lý do (VD: hết món) |
+| `DELIVERING` (Đang giao) | `COMPLETED` | Giao thành công tới khách hàng |
+| `COMPLETED` (Hoàn thành) | *(Không có)* | Trạng thái kết thúc, không thể thay đổi |
+| `CANCELLED` (Đã huỷ) | *(Không có)* | Trạng thái kết thúc, không thể thay đổi |
+
+### 12.3. Quy tắc huỷ đơn theo điều kiện
+- **Khách hàng (`CUSTOMER`)**:
+  - Chỉ được huỷ khi đơn còn ở trạng thái `PENDING` ("Chờ xác nhận").
+  - Chỉ được thao tác trên đơn hàng của chính mình.
+- **Nhân viên / Quản trị (`STAFF` / `ADMIN`)**:
+  - Được huỷ khi đơn ở các bước **trước Đang giao**: `PENDING`, `CONFIRMED`, `PREPARING`.
+  - **Bắt buộc kèm lý do** huỷ đơn (VD: hết món, khách yêu cầu huỷ qua hotline...).
+  - Không được huỷ khi đơn đang ở `DELIVERING` ("Đang giao") hoặc `COMPLETED` ("Hoàn thành").
+- Mọi thao tác huỷ đơn đều tự động ghi một bản ghi vào `OrderStatusHistory`.
+
+### 12.4. Danh sách API Đơn hàng bổ sung
+| Method | Endpoint | Quyền / Mô tả |
+|---|---|---|
+| `GET` | `/api/orders/my-orders` | Khách xem danh sách đơn của mình. Hỗ trợ lọc theo trạng thái: `?status=PENDING` và truyền `?user_id=...` hoặc header `X-User-Id`. |
+| `GET` | `/api/orders/my-orders/{order_id}` | Theo dõi đơn: xem chi tiết đơn kèm món ăn, tuỳ chọn snapshot và dòng thời gian trạng thái (`status_history`). Chặn xem đơn của người khác (HTTP 403). |
+| `POST` | `/api/orders/{order_id}/cancel` | Huỷ đơn theo điều kiện: Khách huỷ khi PENDING; Nhân viên huỷ trước DELIVERING kèm lý do. Ghi lại `OrderStatusHistory`. |
+| `PATCH` | `/api/orders/{order_id}/status` | Cập nhật trạng thái theo bảng chuyển trạng thái hợp lệ và lưu lịch sử. |
+

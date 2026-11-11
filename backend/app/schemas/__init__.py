@@ -26,6 +26,7 @@ from app.schemas.dish import (
 )
 from app.schemas.item import ItemCreate, ItemOut, ItemUpdate
 from app.schemas.order import (
+    OrderCancelRequest,
     OrderCreate,
     OrderItemCreate,
     OrderItemResponse,
@@ -33,6 +34,7 @@ from app.schemas.order import (
     OrderOptionResponse,
     OrderResponse,
     OrderStatus,
+    OrderStatusHistoryResponse,
     OrderStatusUpdate,
     PaymentMethod,
 )
@@ -62,6 +64,7 @@ __all__ = [
     "CartItemUpdate",
     "CartOption",
     "CartResponse",
+    "OrderCancelRequest",
     "OrderCreate",
     "OrderItemCreate",
     "OrderItemResponse",
@@ -69,6 +72,7 @@ __all__ = [
     "OrderOptionResponse",
     "OrderResponse",
     "OrderStatus",
+    "OrderStatusHistoryResponse",
     "OrderStatusUpdate",
     "PaymentMethod",
 ]

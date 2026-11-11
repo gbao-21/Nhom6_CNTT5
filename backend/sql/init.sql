@@ -162,3 +162,15 @@ INSERT IGNORE INTO dish_options (id, dish_id, name, price, is_available) VALUES
 INSERT IGNORE INTO delivery_areas (id, name, shipping_fee, is_active) VALUES
   (1, 'Quận Hà Đông', 15000, 1),
   (2, 'Quận Thanh Xuân', 20000, 1);
+-- 8. Bảng lịch sử trạng thái đơn hàng (order_status_histories)
+CREATE TABLE IF NOT EXISTS order_status_histories (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  order_id    INT NOT NULL,
+  old_status  VARCHAR(30) NULL,
+  new_status  VARCHAR(30) NOT NULL,
+  changed_by  INT NULL,
+  note        VARCHAR(500) NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_status_histories_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_status_histories_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

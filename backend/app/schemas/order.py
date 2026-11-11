@@ -44,6 +44,26 @@ class OrderCreate(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
+    note: str | None = None
+    changed_by: int | None = None
+
+
+class OrderCancelRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=500, description="Lý do huỷ đơn")
+    user_id: int | None = Field(default=None, description="ID người huỷ đơn")
+    role: str | None = Field(default=None, description="Vai trò (CUSTOMER, STAFF, ADMIN...)")
+
+
+class OrderStatusHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    order_id: int
+    old_status: OrderStatus | str | None = None
+    new_status: OrderStatus | str
+    changed_by: int | None = None
+    note: str | None = None
+    created_at: datetime
 
 
 # Tên và giá tùy chọn được lưu tại thời điểm đặt
@@ -87,5 +107,6 @@ class OrderResponse(BaseModel):
     desired_delivery_at: datetime | None = None
     status: OrderStatus
     items: list[OrderItemResponse] = Field(default_factory=list)
+    status_history: list[OrderStatusHistoryResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
