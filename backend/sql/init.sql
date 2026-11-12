@@ -135,3 +135,12 @@ CREATE TABLE IF NOT EXISTS order_items (
   CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id),
   CONSTRAINT fk_order_items_dish FOREIGN KEY (dish_id) REFERENCES dishes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Thêm danh mục mẫu
+INSERT INTO categories (id, name, description, is_active) VALUES 
+(1, 'Món chính', 'Các món ăn no', 1),
+(2, 'Đồ uống', 'Giải khát các loại', 1);
+ON DupLICATE KEY UPDATE name=name
+-- Thêm món ăn mẫu
+INSERT INTO dishes (id, category_id, name, description, price, is_available) VALUES 
+(1, 1, 'Cơm rang dưa bò', 'Cơm rang giòn kèm bò xào dưa chua', 45000, 1),
+(2, 2, 'Trà sữa trân châu', 'Trà sữa béo ngậy kèm trân châu', 25000, 1);
