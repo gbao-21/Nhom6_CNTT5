@@ -6,6 +6,7 @@ from app.routers import (
     dishes,
     health,
     items,
+    menu,
     orders,
     users,
 )

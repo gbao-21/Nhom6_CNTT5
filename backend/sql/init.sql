@@ -50,8 +50,6 @@ CREATE TABLE IF NOT EXISTS dishes (
   price        DECIMAL(15, 2) NOT NULL DEFAULT 0,
   image_url    VARCHAR(500) NULL,
   is_available TINYINT(1) NOT NULL DEFAULT 1,
-  is_active    TINYINT(1) NOT NULL DEFAULT 1,
-  status       VARCHAR(30) NOT NULL DEFAULT 'AVAILABLE',
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_dishes_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
@@ -137,40 +135,12 @@ CREATE TABLE IF NOT EXISTS order_items (
   CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id),
   CONSTRAINT fk_order_items_dish FOREIGN KEY (dish_id) REFERENCES dishes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- DỮ LIỆU MẪU ĐỂ TEST API GIỎ HÀNG & ĐẶT MÓN
--- ============================================================
-INSERT IGNORE INTO users (id, full_name, email, phone, password_hash, role, is_active) VALUES
-  (1, 'Thái Nguyễn Gia Bảo', 'giabao@example.com', '0901234567', 'hashed_pw_1', 'CUSTOMER', 1),
-  (2, 'Nguyễn Văn B', 'vanb@example.com', '0902345678', 'hashed_pw_2', 'CUSTOMER', 1);
-
-INSERT IGNORE INTO categories (id, name, description, is_active) VALUES
-  (1, 'Món chính đêm', 'Các món ăn no giao đêm', 1),
-  (2, 'Đồ uống', 'Trà, nước giải khát', 1);
-
-INSERT IGNORE INTO dishes (id, category_id, name, description, price, is_available, is_active, status) VALUES
-  (1, 1, 'Mì trộn Indomie đặc biệt', 'Mì trộn kèm trứng lòng đào và xúc xích', 45000, 1, 1, 'AVAILABLE'),
-  (2, 1, 'Cơm gà xối mỡ (Hết hàng)', 'Món dùng để test chặn món hết hàng', 55000, 0, 1, 'OUT_OF_STOCK'),
-  (3, 1, 'Cháo sườn sụn (Món ẩn)', 'Món dùng để test chặn món bị ẩn', 35000, 1, 0, 'HIDDEN');
-
-INSERT IGNORE INTO dish_options (id, dish_id, name, price, is_available) VALUES
-  (1, 1, 'Thêm trứng lòng đào', 7000, 1),
-  (2, 1, 'Thêm phô mai kéo sợi', 10000, 1),
-  (3, 1, 'Topping tóp mỡ (Đã hết)', 5000, 0);
-
-INSERT IGNORE INTO delivery_areas (id, name, shipping_fee, is_active) VALUES
-  (1, 'Quận Hà Đông', 15000, 1),
-  (2, 'Quận Thanh Xuân', 20000, 1);
--- 8. Bảng lịch sử trạng thái đơn hàng (order_status_histories)
-CREATE TABLE IF NOT EXISTS order_status_histories (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  order_id    INT NOT NULL,
-  old_status  VARCHAR(30) NULL,
-  new_status  VARCHAR(30) NOT NULL,
-  changed_by  INT NULL,
-  note        VARCHAR(500) NULL,
-  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_status_histories_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_status_histories_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Thêm danh mục mẫu
+INSERT INTO categories (id, name, description, is_active) VALUES 
+(1, 'Món chính', 'Các món ăn no', 1),
+(2, 'Đồ uống', 'Giải khát các loại', 1);
+ON DupLICATE KEY UPDATE name=name
+-- Thêm món ăn mẫu
+INSERT INTO dishes (id, category_id, name, description, price, is_available) VALUES 
+(1, 1, 'Cơm rang dưa bò', 'Cơm rang giòn kèm bò xào dưa chua', 45000, 1),
+(2, 2, 'Trà sữa trân châu', 'Trà sữa béo ngậy kèm trân châu', 25000, 1);
