@@ -44,7 +44,9 @@ from app.schemas.order import (
     PaymentMethod,
 )
 from app.schemas.review import (
+    DishReviewSummaryResponse,
     ReviewCreate,
+    ReviewHideRequest,
     ReviewReplyRequest,
     ReviewResponse,
     ReviewUpdate,
@@ -102,6 +104,8 @@ __all__ = [
     "ReviewUpdate",
     "ReviewReplyRequest",
     "ReviewResponse",
+    "ReviewHideRequest",
+    "DishReviewSummaryResponse",
     "ChatMessageCreate",
     "ChatMessageResponse",
     "ChatMessageMarkRead",

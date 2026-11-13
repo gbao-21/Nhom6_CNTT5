@@ -42,6 +42,14 @@ def ensure_schema_and_seed_data() -> None:
                     text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
                 )
 
+    if "reviews" in table_names:
+        review_cols = {col["name"] for col in inspector.get_columns("reviews")}
+        with engine.begin() as conn:
+            if "is_hidden" not in review_cols:
+                conn.execute(
+                    text("ALTER TABLE reviews ADD COLUMN is_hidden TINYINT(1) NOT NULL DEFAULT 0")
+                )
+
     db: Session = SessionLocal()
     try:
         # 1. Seed Users (User 1 và User 2 để test phân quyền giỏ hàng)

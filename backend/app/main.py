@@ -22,6 +22,7 @@ from app.routers import (
     health,
     items,
     orders,
+    reviews,
     users,
 )
 
@@ -62,6 +63,7 @@ app.include_router(delivery_areas.router, prefix="/api")
 app.include_router(carts.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")
 app.include_router(coupons.router, prefix="/api")
+app.include_router(reviews.router, prefix="/api")
 
 
 @app.get("/")

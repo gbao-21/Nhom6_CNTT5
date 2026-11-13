@@ -10,6 +10,7 @@ Yêu cầu:
 - trả lời của cửa hàng (shop_reply, replied_at)
 """
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -36,7 +37,7 @@ class Review(Base):
         index=True,
     )
 
-    # Món ăn được đánh giá (nullable nếu đánh giá tổng thể đơn hàng)
+    # Món ăn được đánh giá
     dish_id = Column(
         Integer,
         ForeignKey("dishes.id", ondelete="SET NULL"),
@@ -55,15 +56,23 @@ class Review(Base):
     # Số sao (1 đến 5 sao)
     rating = Column(Integer, nullable=False, default=5)
 
-    # Nội dung đánh giá
+    # Nội dung nhận xét
     content = Column(Text, nullable=True)
 
-    # Hình ảnh đính kèm (URL ảnh món thực tế nhận được)
+    # Hình ảnh đính kèm (URL ảnh món)
     image_url = Column(String(500), nullable=True)
 
     # Trả lời của cửa hàng
     shop_reply = Column(Text, nullable=True)
     replied_at = Column(DateTime, nullable=True)
+
+    # Trạng thái ẩn đánh giá do Admin vi phạm
+    is_hidden = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="0",
+    )
 
     created_at = Column(
         DateTime,
