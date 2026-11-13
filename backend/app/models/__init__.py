@@ -3,6 +3,7 @@ Thêm model mới -> nhớ thêm 1 dòng import vào file này.
 """
 from app.models.cart import Cart, CartItem
 from app.models.category import Category
+from app.models.coupon import Coupon
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish, DishOption
 from app.models.item import Item
@@ -21,4 +22,5 @@ __all__ = [
     "Order",
     "OrderItem",
     "OrderStatusHistory",
+    "Coupon",
 ]

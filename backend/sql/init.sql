@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_address    VARCHAR(500) NOT NULL,
   delivery_area_id    INT NOT NULL,
   shipping_fee        DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  coupon_code         VARCHAR(50) NULL,
   discount_amount     DECIMAL(15, 2) NOT NULL DEFAULT 0,
   subtotal            DECIMAL(15, 2) NOT NULL,
   total_amount        DECIMAL(15, 2) NOT NULL,
@@ -174,3 +175,25 @@ CREATE TABLE IF NOT EXISTS order_status_histories (
   CONSTRAINT fk_status_histories_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   CONSTRAINT fk_status_histories_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Bảng mã giảm giá (coupons)
+CREATE TABLE IF NOT EXISTS coupons (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  code             VARCHAR(50) NOT NULL UNIQUE,
+  description      VARCHAR(500) NULL,
+  discount_type    VARCHAR(20) NOT NULL DEFAULT 'FIXED',
+  discount_value   DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  min_order_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  max_uses         INT NULL,
+  used_count       INT NOT NULL DEFAULT 0,
+  valid_from       DATETIME NULL,
+  valid_to         DATETIME NULL,
+  status           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO coupons (id, code, description, discount_type, discount_value, min_order_amount, max_uses, used_count, status) VALUES
+  (1, 'GIAM10K', 'Giảm 10.000đ cho đơn từ 40.000đ', 'FIXED', 10000, 40000, 10, 0, 'ACTIVE'),
+  (2, 'SALE10', 'Giảm 10% cho mọi đơn hàng', 'PERCENT', 10, 0, 50, 0, 'ACTIVE');
+

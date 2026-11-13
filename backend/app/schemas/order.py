@@ -39,6 +39,7 @@ class OrderCreate(BaseModel):
     delivery_area_id: int
     payment_method: PaymentMethod
     desired_delivery_at: datetime | None = None
+    coupon_code: str | None = Field(default=None, max_length=50, description="Mã giảm giá (không phân biệt hoa thường)")
     items: list[OrderItemCreate] = Field(min_length=1)
 
 
@@ -100,6 +101,7 @@ class OrderResponse(BaseModel):
     delivery_address: str
     delivery_area_id: int
     shipping_fee: Decimal
+    coupon_code: str | None = None
     discount_amount: Decimal
     subtotal: Decimal
     total_amount: Decimal

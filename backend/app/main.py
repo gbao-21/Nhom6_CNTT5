@@ -16,6 +16,7 @@ from app.db.session import Base, engine
 from app.routers import (
     carts,
     categories,
+    coupons,
     delivery_areas,
     dishes,
     health,
@@ -60,6 +61,7 @@ app.include_router(dishes.router, prefix="/api")
 app.include_router(delivery_areas.router, prefix="/api")
 app.include_router(carts.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")
+app.include_router(coupons.router, prefix="/api")
 
 
 @app.get("/")

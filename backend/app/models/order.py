@@ -43,6 +43,7 @@ class Order(Base):
         default=0,
         server_default="0",
     )
+    coupon_code = Column(String(50), nullable=True)
     discount_amount = Column(
         Numeric(15, 2),
         nullable=False,
