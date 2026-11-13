@@ -11,6 +11,7 @@ class Category(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False, unique=True)
     description = Column(Text, nullable=True)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     is_active = Column(Boolean, nullable=False, default=True, server_default="1")
 
     created_at = Column(DateTime, nullable=False, server_default=func.now())
@@ -22,4 +23,3 @@ class Category(Base):
     )
 
     dishes = relationship("Dish", back_populates="category")
-
