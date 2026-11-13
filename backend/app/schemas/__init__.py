@@ -12,6 +12,11 @@ from app.schemas.category import (
     CategoryResponse,
     CategoryUpdate,
 )
+from app.schemas.chat_message import (
+    ChatMessageCreate,
+    ChatMessageMarkRead,
+    ChatMessageResponse,
+)
 from app.schemas.delivery_area import (
     DeliveryAreaCreate,
     DeliveryAreaResponse,
@@ -38,7 +43,20 @@ from app.schemas.order import (
     OrderStatusUpdate,
     PaymentMethod,
 )
+from app.schemas.review import (
+    ReviewCreate,
+    ReviewReplyRequest,
+    ReviewResponse,
+    ReviewUpdate,
+)
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.voucher import (
+    VoucherCreate,
+    VoucherDiscountType,
+    VoucherResponse,
+    VoucherStatus,
+    VoucherUpdate,
+)
 
 __all__ = [
     "ItemCreate",
@@ -75,5 +93,17 @@ __all__ = [
     "OrderStatusHistoryResponse",
     "OrderStatusUpdate",
     "PaymentMethod",
+    "VoucherCreate",
+    "VoucherUpdate",
+    "VoucherResponse",
+    "VoucherDiscountType",
+    "VoucherStatus",
+    "ReviewCreate",
+    "ReviewUpdate",
+    "ReviewReplyRequest",
+    "ReviewResponse",
+    "ChatMessageCreate",
+    "ChatMessageResponse",
+    "ChatMessageMarkRead",
 ]
 

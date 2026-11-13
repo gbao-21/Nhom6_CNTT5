@@ -6,10 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal, engine
 from app.models.category import Category
+from app.models.chat_message import ChatMessage
 from app.models.coupon import Coupon
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish
+from app.models.review import Review
 from app.models.user import User
+from app.models.voucher import Voucher
 
 
 def ensure_schema_and_seed_data() -> None:
@@ -157,6 +160,43 @@ def ensure_schema_and_seed_data() -> None:
                     max_uses=50,
                     used_count=0,
                     status="ACTIVE",
+                )
+            )
+
+        # 6. Seed Vouchers
+        if db.query(Voucher).filter(Voucher.code == "VOUCHER20").first() is None:
+            db.add(
+                Voucher(
+                    code="VOUCHER20",
+                    description="Giảm 20% tối đa 30.000đ cho đơn từ 50.000đ",
+                    discount_type="PERCENT",
+                    discount_value=Decimal("20"),
+                    min_order_amount=Decimal("50000"),
+                    max_discount_amount=Decimal("30000"),
+                    max_uses=100,
+                    used_count=0,
+                    status="ACTIVE",
+                )
+            )
+
+        # 7. Seed ChatMessage
+        if db.query(ChatMessage).first() is None:
+            db.add(
+                ChatMessage(
+                    customer_id=1,
+                    sender_id=1,
+                    sender_role="CUSTOMER",
+                    content="Shop ơi quán còn mở cửa đến mấy giờ ạ?",
+                    is_read=True,
+                )
+            )
+            db.add(
+                ChatMessage(
+                    customer_id=1,
+                    sender_id=2,
+                    sender_role="STAFF",
+                    content="Chào bạn, quán mở cửa giao đêm đến 3h sáng bạn nhé!",
+                    is_read=False,
                 )
             )
         db.commit()
