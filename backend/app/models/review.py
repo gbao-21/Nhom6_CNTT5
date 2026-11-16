@@ -1,20 +1,11 @@
-"""Model bảng reviews (đánh giá món ăn & đơn hàng).
-
-Yêu cầu:
-- đơn (order_id)
-- món (dish_id)
-- người đánh giá (user_id)
-- số sao (rating)
-- nội dung (content)
-- ảnh (image_url)
-- trả lời của cửa hàng (shop_reply, replied_at)
-"""
+"""Model bảng reviews (đánh giá món ăn theo đơn hàng)."""
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
     ForeignKey,
     Integer,
+    SmallInteger,
     String,
     Text,
     func,
@@ -29,56 +20,26 @@ class Review(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Đơn hàng được đánh giá
-    order_id = Column(
-        Integer,
-        ForeignKey("orders.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
+    # Đơn hàng và người đánh giá
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Món ăn được đánh giá
-    dish_id = Column(
-        Integer,
-        ForeignKey("dishes.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
+    # Món được đánh giá
+    dish_id = Column(Integer, ForeignKey("dishes.id", ondelete="SET NULL"), nullable=True)
 
-    # Khách hàng thực hiện đánh giá
-    user_id = Column(
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    # Số sao (1 đến 5 sao)
-    rating = Column(Integer, nullable=False, default=5)
-
-    # Nội dung nhận xét
+    # Nội dung đánh giá
+    rating = Column(SmallInteger, nullable=False)          # 1-5
     content = Column(Text, nullable=True)
-
-    # Hình ảnh đính kèm (URL ảnh món)
     image_url = Column(String(500), nullable=True)
 
-    # Trả lời của cửa hàng
+    # Phản hồi của cửa hàng
     shop_reply = Column(Text, nullable=True)
     replied_at = Column(DateTime, nullable=True)
 
-    # Trạng thái ẩn đánh giá do Admin vi phạm
-    is_hidden = Column(
-        Boolean,
-        nullable=False,
-        default=False,
-        server_default="0",
-    )
+    # Admin ẩn đánh giá vi phạm
+    is_hidden = Column(Boolean, nullable=False, default=False, server_default="0")
 
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-    )
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime,
         nullable=False,
@@ -86,8 +47,7 @@ class Review(Base):
         onupdate=func.now(),
     )
 
-    # Quan hệ liên kết
-    order = relationship("Order", backref="reviews")
-    dish = relationship("Dish", backref="reviews")
-    user = relationship("User", backref="reviews")
+    order = relationship("Order")
+    user = relationship("User")
+    dish = relationship("Dish")
 

@@ -12,10 +12,13 @@ from app.schemas.category import (
     CategoryResponse,
     CategoryUpdate,
 )
-from app.schemas.chat_message import (
-    ChatMessageCreate,
-    ChatMessageMarkRead,
-    ChatMessageResponse,
+from app.schemas.chat_message import ChatMessageCreate, ChatMessageResponse
+from app.schemas.coupon import (
+    CouponApplyRequest,
+    CouponApplyResponse,
+    CouponCreate,
+    CouponResponse,
+    CouponUpdate,
 )
 from app.schemas.delivery_area import (
     DeliveryAreaCreate,
@@ -45,18 +48,16 @@ from app.schemas.order import (
 )
 from app.schemas.review import (
     DishReviewSummaryResponse,
+    OrderReviewResponse,
     ReviewCreate,
     ReviewHideRequest,
     ReviewReplyRequest,
     ReviewResponse,
-    ReviewUpdate,
 )
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.schemas.voucher import (
     VoucherCreate,
-    VoucherDiscountType,
     VoucherResponse,
-    VoucherStatus,
     VoucherUpdate,
 )
 
@@ -95,19 +96,21 @@ __all__ = [
     "OrderStatusHistoryResponse",
     "OrderStatusUpdate",
     "PaymentMethod",
+    "CouponCreate",
+    "CouponUpdate",
+    "CouponResponse",
+    "CouponApplyRequest",
+    "CouponApplyResponse",
+    "ReviewCreate",
+    "ReviewReplyRequest",
+    "ReviewHideRequest",
+    "ReviewResponse",
+    "DishReviewSummaryResponse",
+    "OrderReviewResponse",
     "VoucherCreate",
     "VoucherUpdate",
     "VoucherResponse",
-    "VoucherDiscountType",
-    "VoucherStatus",
-    "ReviewCreate",
-    "ReviewUpdate",
-    "ReviewReplyRequest",
-    "ReviewResponse",
-    "ReviewHideRequest",
-    "DishReviewSummaryResponse",
     "ChatMessageCreate",
     "ChatMessageResponse",
-    "ChatMessageMarkRead",
 ]
 

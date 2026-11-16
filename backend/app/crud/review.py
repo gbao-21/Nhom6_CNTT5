@@ -1,82 +1,44 @@
-"""CRUD xử lý nghiệp vụ Đánh giá (Review):
-- Khách có đơn Hoàn thành được chấm sao, nhận xét (và ảnh) từng món một lần.
-- Tính điểm trung bình của món.
-- Cửa hàng trả lời đánh giá.
-- Admin ẩn đánh giá vi phạm.
-"""
-from datetime import datetime
+"""CRUD thao tác với bảng reviews."""
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.dish import Dish
 from app.models.order import Order
 from app.models.review import Review
-from app.schemas.review import ReviewCreate
+from app.schemas.review import ReviewCreate, ReviewReplyRequest
 
 
-def get_review(db: Session, review_id: int) -> Optional[Review]:
-    return db.get(Review, review_id)
+def create_review(db: Session, data: ReviewCreate) -> Review:
+    """Tạo đánh giá mới.
 
-
-def create_review(db: Session, user_id: int, data: ReviewCreate) -> Review:
-    """Khách tạo đánh giá món ăn sau khi nhận hàng:
-    - Đơn phải tồn tại và thuộc quyền sở hữu của khách.
-    - Đơn phải ở trạng thái COMPLETED (Hoàn thành).
-    - Món ăn phải nằm trong đơn hàng.
-    - Mỗi món trong một đơn hàng chỉ được đánh giá duy nhất một lần.
+    Business rules:
+    - Đơn hàng phải ở trạng thái COMPLETED
+    - Mỗi dish trong 1 đơn chỉ được đánh giá 1 lần
+    - user_id phải là chủ đơn hàng
     """
-    order = db.get(Order, data.order_id)
+    order = db.query(Order).filter(Order.id == data.order_id).first()
     if order is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy đơn hàng id={data.order_id}",
-        )
-
-    if order.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn chỉ có thể đánh giá đơn hàng của chính mình",
-        )
-
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy đơn hàng id={data.order_id}")
     if order.status != "COMPLETED":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Chỉ có thể đánh giá khi đơn hàng đã Hoàn thành (COMPLETED). Trạng thái hiện tại: {order.status}",
-        )
+        raise HTTPException(status_code=400, detail="Chỉ có thể đánh giá đơn hàng đã hoàn thành")
+    if order.user_id != data.user_id:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền đánh giá đơn hàng này")
 
-    dish = db.get(Dish, data.dish_id)
-    if dish is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy món ăn id={data.dish_id}",
-        )
-
-    # Kiểm tra món ăn có nằm trong danh sách món của đơn hàng không
-    dish_in_order = any(item.dish_id == data.dish_id for item in order.items)
-    if not dish_in_order:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Món '{dish.name}' (id={data.dish_id}) không nằm trong đơn hàng {order.order_code}",
-        )
-
-    # Chặn đánh giá món đó lần 2 trong cùng đơn hàng
-    existing_review = (
+    # Kiểm tra đã đánh giá món này trong đơn chưa
+    existing = (
         db.query(Review)
         .filter(Review.order_id == data.order_id, Review.dish_id == data.dish_id)
         .first()
     )
-    if existing_review:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bạn đã đánh giá món '{dish.name}' trong đơn hàng này rồi. Mỗi món chỉ được đánh giá 1 lần.",
-        )
+    if existing:
+        raise HTTPException(status_code=400, detail="Món này trong đơn hàng đã được đánh giá trước đó")
 
     review = Review(
         order_id=data.order_id,
         dish_id=data.dish_id,
-        user_id=user_id,
+        user_id=data.user_id,
         rating=data.rating,
         content=data.content,
         image_url=data.image_url,
@@ -88,65 +50,119 @@ def create_review(db: Session, user_id: int, data: ReviewCreate) -> Review:
     return review
 
 
-def get_dish_reviews_summary(
-    db: Session,
-    dish_id: int,
-    include_hidden: bool = False,
-) -> tuple[Dish, float, int, list[Review]]:
-    """Lấy danh sách đánh giá và tính điểm trung bình của một món ăn."""
-    dish = db.get(Dish, dish_id)
-    if dish is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy món ăn id={dish_id}",
-        )
+def get_dish_reviews(db: Session, dish_id: int) -> dict:
+    """Lấy danh sách đánh giá của món, kèm điểm trung bình."""
+    from app.models.dish import Dish
+    from app.models.user import User
 
-    query = db.query(Review).filter(Review.dish_id == dish_id)
-    if not include_hidden:
-        query = query.filter(Review.is_hidden.is_(False))
+    dish = db.query(Dish).filter(Dish.id == dish_id).first()
 
-    reviews = query.order_by(Review.created_at.desc()).all()
-    total_reviews = len(reviews)
-    if total_reviews > 0:
-        average_rating = round(sum(r.rating for r in reviews) / total_reviews, 1)
-    else:
-        average_rating = 0.0
+    # Lấy các review không bị ẩn
+    reviews = (
+        db.query(Review)
+        .filter(Review.dish_id == dish_id, Review.is_hidden == False)  # noqa: E712
+        .order_by(Review.created_at.desc())
+        .all()
+    )
 
-    return dish, average_rating, total_reviews, reviews
+    # Gắn thêm user_name và dish_name
+    result = []
+    for r in reviews:
+        item = {
+            "id": r.id,
+            "order_id": r.order_id,
+            "dish_id": r.dish_id,
+            "user_id": r.user_id,
+            "user_name": None,
+            "dish_name": dish.name if dish else None,
+            "rating": r.rating,
+            "content": r.content,
+            "image_url": r.image_url,
+            "shop_reply": r.shop_reply,
+            "replied_at": r.replied_at,
+            "is_hidden": r.is_hidden,
+            "created_at": r.created_at,
+        }
+        if r.user_id:
+            user = db.query(User).filter(User.id == r.user_id).first()
+            if user:
+                item["user_name"] = user.full_name or user.email
+        result.append(item)
+
+    total = len(result)
+    avg = round(sum(r["rating"] for r in result) / total, 1) if total > 0 else 0.0
+
+    return {
+        "dish_id": dish_id,
+        "dish_name": dish.name if dish else None,
+        "average_rating": avg,
+        "total_reviews": total,
+        "reviews": result,
+    }
 
 
-def reply_to_review(db: Session, review_id: int, shop_reply: str) -> Review:
+def get_order_reviews(db: Session, order_id: int) -> dict:
+    """Lấy danh sách đánh giá của đơn hàng."""
+    from app.models.dish import Dish
+    from app.models.user import User
+
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if order is None:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy đơn hàng id={order_id}")
+
+    reviews = (
+        db.query(Review)
+        .filter(Review.order_id == order_id)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+
+    result = []
+    for r in reviews:
+        dish = db.query(Dish).filter(Dish.id == r.dish_id).first() if r.dish_id else None
+        user = db.query(User).filter(User.id == r.user_id).first() if r.user_id else None
+        result.append({
+            "id": r.id,
+            "order_id": r.order_id,
+            "dish_id": r.dish_id,
+            "user_id": r.user_id,
+            "user_name": (user.full_name or user.email) if user else None,
+            "dish_name": dish.name if dish else None,
+            "rating": r.rating,
+            "content": r.content,
+            "image_url": r.image_url,
+            "shop_reply": r.shop_reply,
+            "replied_at": r.replied_at,
+            "is_hidden": r.is_hidden,
+            "created_at": r.created_at,
+        })
+
+    return {
+        "order_id": order_id,
+        "order_status": order.status,
+        "reviews": result,
+    }
+
+
+def reply_to_review(db: Session, review_id: int, data: ReviewReplyRequest) -> Review:
     """Cửa hàng trả lời đánh giá."""
-    review = db.get(Review, review_id)
+    review = db.query(Review).filter(Review.id == review_id).first()
     if review is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy đánh giá id={review_id}",
-        )
-
-    review.shop_reply = shop_reply
-    review.replied_at = datetime.now()
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy đánh giá id={review_id}")
+    review.shop_reply = data.reply
+    review.replied_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(review)
     return review
 
 
-def set_review_hidden_status(db: Session, review_id: int, is_hidden: bool = True) -> Review:
-    """Admin ẩn hoặc hiện lại đánh giá vi phạm."""
-    review = db.get(Review, review_id)
+def set_review_hidden(db: Session, review_id: int, is_hidden: bool) -> Review:
+    """Admin ẩn / hiện đánh giá."""
+    review = db.query(Review).filter(Review.id == review_id).first()
     if review is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy đánh giá id={review_id}",
-        )
-
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy đánh giá id={review_id}")
     review.is_hidden = is_hidden
     db.commit()
     db.refresh(review)
     return review
-
-
-def get_order_reviews(db: Session, order_id: int) -> list[Review]:
-    """Lấy danh sách các đánh giá của 1 đơn hàng."""
-    return db.query(Review).filter(Review.order_id == order_id).all()
 

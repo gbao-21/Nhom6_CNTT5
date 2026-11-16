@@ -26,7 +26,7 @@ __all__ = [
     "OrderItem",
     "OrderStatusHistory",
     "Coupon",
-    "Voucher",
     "Review",
+    "Voucher",
     "ChatMessage",
 ]

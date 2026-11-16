@@ -1,14 +1,7 @@
-"""Model bảng vouchers (mã giảm giá).
+"""Model bảng vouchers (phiếu giảm giá có thể gán cho người dùng cụ thể).
 
-Yêu cầu:
-- mã (code)
-- kiểu % hoặc số tiền (discount_type: PERCENT, FIXED)
-- giá trị (discount_value)
-- đơn tối thiểu (min_order_amount)
-- giảm tối đa (max_discount_amount)
-- hạn dùng (valid_from, valid_to / expired_at)
-- số lượt (max_uses)
-- đã dùng (used_count)
+Khác Coupon (mã công khai dùng chung):
+  Voucher được tạo cá nhân hoá, gắn với user, có giảm tối đa.
 """
 from sqlalchemy import Column, DateTime, Integer, Numeric, String, func
 
@@ -20,31 +13,27 @@ class Voucher(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Mã giảm giá (lưu chữ HOA, không phân biệt hoa thường khi tra cứu)
+    # Mã voucher (unique)
     code = Column(String(50), nullable=False, unique=True, index=True)
 
-    description = Column(String(500), nullable=True)
-
     # PERCENT hoặc FIXED
-    discount_type = Column(String(20), nullable=False, default="FIXED", server_default="FIXED")
+    discount_type = Column(String(20), nullable=False, default="PERCENT", server_default="PERCENT")
 
-    # Giá trị giảm: % (0-100) nếu PERCENT, số tiền nếu FIXED
+    # Giá trị giảm: % (0-100) hoặc số tiền cố định
     discount_value = Column(Numeric(15, 2), nullable=False, default=0, server_default="0")
 
-    # Giá trị đơn tối thiểu để áp dụng voucher (0 = không giới hạn)
+    # Đơn hàng tối thiểu để áp dụng (0 = không yêu cầu)
     min_order_amount = Column(Numeric(15, 2), nullable=False, default=0, server_default="0")
 
-    # Số tiền giảm tối đa (đặc biệt hữu ích khi dùng loại PERCENT, NULL = không giới hạn)
+    # Giảm tối đa (NULL = không giới hạn, áp dụng cho loại PERCENT)
     max_discount_amount = Column(Numeric(15, 2), nullable=True)
 
-    # Hạn dùng
+    # Thời hạn sử dụng
     valid_from = Column(DateTime, nullable=True)
     valid_to = Column(DateTime, nullable=True)
 
-    # Số lượt tối đa (NULL = không giới hạn)
+    # Số lượt dùng tối đa và số lượt đã dùng
     max_uses = Column(Integer, nullable=True)
-
-    # Số lượt đã dùng
     used_count = Column(Integer, nullable=False, default=0, server_default="0")
 
     # ACTIVE hoặc INACTIVE

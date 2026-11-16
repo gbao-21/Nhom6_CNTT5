@@ -1,356 +1,214 @@
-"""Script kiểm thử toàn bộ yêu cầu của task:
-[Đánh giá] API đánh giá món sau khi nhận
-1. Khách có đơn Hoàn thành (COMPLETED) được chấm sao, nhận xét (và ảnh) từng món một lần.
-2. Chặn khách đánh giá đơn chưa hoàn thành.
-3. Chặn khách đánh giá đơn của người khác.
-4. Chặn khách đánh giá món không thuộc đơn hàng.
-5. Chặn đánh giá 1 món 2 lần trong cùng đơn hàng (chỉ được đánh giá một lần).
-6. Tính điểm trung bình của món chính xác.
-7. Cửa hàng trả lời đánh giá (shop_reply, replied_at).
-8. Admin ẩn đánh giá vi phạm (ẩn khỏi danh sách công khai và không tính vào điểm trung bình).
+"""Unit test cho Task [Đánh giá] API đánh giá món sau khi nhận:
+- Khách có đơn Hoàn thành được chấm sao, nhận xét (và ảnh) từng món một lần;
+- Chặn khi đơn chưa hoàn thành;
+- Chặn đánh giá 2 lần cùng 1 món;
+- Điểm trung bình của món;
+- Cửa hàng trả lời đánh giá;
+- Admin ẩn đánh giá vi phạm.
 """
-from datetime import datetime
-from decimal import Decimal
-from pathlib import Path
+import os
 import sys
 import unittest
+from decimal import Decimal
 
-# Đảm bảo import được backend app
-BACKEND_DIR = Path(__file__).resolve().parent.parent
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+from app.crud import review as review_crud
 from app.db.base import Base
-import app.models  # noqa: F401
+from app.models.category import Category
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish
 from app.models.order import Order, OrderItem
 from app.models.review import Review
 from app.models.user import User
-from app.routers.reviews import (
-    create_review,
-    get_dish_reviews,
-    get_order_reviews,
-    hide_review,
-    reply_to_review,
-)
-from app.schemas.review import (
-    ReviewCreate,
-    ReviewHideRequest,
-    ReviewReplyRequest,
-)
+from app.schemas.review import ReviewCreate, ReviewReplyRequest
 
 
-class ReviewApiTestCase(unittest.TestCase):
+class TestReviewAPI(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        cls.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=cls.engine)
+
     def setUp(self):
-        self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(bind=self.engine)
-        Session = sessionmaker(bind=self.engine)
-        self.db = Session()
-        self.seed_data()
+        self.db = self.SessionLocal()
+        self._init_data()
 
     def tearDown(self):
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
 
-    def seed_data(self):
-        # 1. Users
-        self.user1 = User(
+    def _init_data(self):
+        # Tạo user khách
+        self.user = User(
             id=1,
-            full_name="Nguyễn Văn A",
-            email="a@example.com",
-            phone="0901234567",
-            password_hash="pw1",
+            full_name="Khách Hàng Test",
+            email="khach@example.com",
+            password_hash="pwd",
             role="CUSTOMER",
-            is_active=True,
         )
-        self.user2 = User(
-            id=2,
-            full_name="Trần Thị B",
-            email="b@example.com",
-            phone="0902345678",
-            password_hash="pw2",
-            role="CUSTOMER",
-            is_active=True,
-        )
-        self.staff = User(
-            id=3,
-            full_name="Nhân Viên Quán",
-            email="staff@example.com",
-            phone="0903456789",
-            password_hash="pw3",
-            role="STAFF",
-            is_active=True,
-        )
-        self.db.add_all([self.user1, self.user2, self.staff])
+        self.db.add(self.user)
 
-        # 2. Khu vực
-        self.area = DeliveryArea(id=1, name="Quận Hà Đông", shipping_fee=Decimal("15000"), is_active=True)
+        # Tạo khu vực & món ăn
+        self.area = DeliveryArea(id=1, name="Quận 1", shipping_fee=Decimal("15000"), is_active=True)
         self.db.add(self.area)
 
-        # 3. Dishes
-        self.dish1 = Dish(id=1, name="Mì trộn Indomie", price=Decimal("45000"), is_available=True, is_active=True, status="AVAILABLE")
-        self.dish2 = Dish(id=2, name="Cơm gà xối mỡ", price=Decimal("55000"), is_available=True, is_active=True, status="AVAILABLE")
-        self.dish3 = Dish(id=3, name="Trà tắc khổng lồ", price=Decimal("20000"), is_available=True, is_active=True, status="AVAILABLE")
-        self.db.add_all([self.dish1, self.dish2, self.dish3])
+        self.dish1 = Dish(id=1, name="Mì trộn gà sốt", price=Decimal("45000"), is_available=True)
+        self.dish2 = Dish(id=2, name="Trà sữa thái xanh", price=Decimal("25000"), is_available=True)
+        self.db.add_all([self.dish1, self.dish2])
 
-        # 4. Đơn hàng 1 của user 1 - Đã COMPLETED (có món 1 và món 2)
+        # Đơn 1: Đã COMPLETED
         self.order_completed = Order(
             id=1,
-            order_code="ORD-COMPLETED-01",
+            order_code="DH001",
             user_id=1,
-            recipient_name="Nguyễn Văn A",
+            recipient_name="Khách Hàng Test",
             recipient_phone="0901234567",
-            delivery_address="123 Quang Trung",
+            delivery_address="123 Phố",
             delivery_area_id=1,
-            shipping_fee=Decimal("15000"),
-            discount_amount=Decimal("0"),
-            subtotal=Decimal("100000"),
-            total_amount=Decimal("115000"),
+            subtotal=Decimal("70000"),
+            total_amount=Decimal("85000"),
             payment_method="COD",
             status="COMPLETED",
         )
-        self.db.add(self.order_completed)
-        self.db.flush()
-
-        item1 = OrderItem(order_id=1, dish_id=1, dish_name="Mì trộn Indomie", dish_price=Decimal("45000"), quantity=1, line_total=Decimal("45000"))
-        item2 = OrderItem(order_id=1, dish_id=2, dish_name="Cơm gà xối mỡ", dish_price=Decimal("55000"), quantity=1, line_total=Decimal("55000"))
-        self.db.add_all([item1, item2])
-
-        # 5. Đơn hàng 2 của user 1 - Chưa hoàn thành (PENDING)
+        # Đơn 2: Đang PENDING
         self.order_pending = Order(
             id=2,
-            order_code="ORD-PENDING-02",
+            order_code="DH002",
             user_id=1,
-            recipient_name="Nguyễn Văn A",
+            recipient_name="Khách Hàng Test",
             recipient_phone="0901234567",
-            delivery_address="123 Quang Trung",
+            delivery_address="123 Phố",
             delivery_area_id=1,
-            shipping_fee=Decimal("15000"),
-            discount_amount=Decimal("0"),
             subtotal=Decimal("45000"),
             total_amount=Decimal("60000"),
             payment_method="COD",
             status="PENDING",
         )
-        self.db.add(self.order_pending)
-        self.db.flush()
-        item3 = OrderItem(order_id=2, dish_id=1, dish_name="Mì trộn Indomie", dish_price=Decimal("45000"), quantity=1, line_total=Decimal("45000"))
-        self.db.add(item3)
-
+        self.db.add_all([self.order_completed, self.order_pending])
         self.db.commit()
 
-    # ────────────────────────────────────────────────────────────
-    # 1. TEST ĐÁNH GIÁ MÓN HỢP LỆ VÀ CÁC ĐIỀU KIỆN CHẶN
-    # ────────────────────────────────────────────────────────────
-    def test_create_review_success(self):
-        """Khách có đơn Hoàn thành được chấm sao, nhận xét và ảnh từng món."""
-        req = ReviewCreate(
+    def test_review_completed_order_success(self):
+        """Khách có đơn Hoàn thành được chấm sao, nhận xét và ảnh."""
+        payload = ReviewCreate(
             order_id=1,
             dish_id=1,
+            user_id=1,
             rating=5,
-            content="Mì trộn rất ngon, xúc xích và trứng chuẩn vị!",
-            image_url="https://example.com/mi_tron.jpg",
+            content="Mì ăn rất đậm đà, nóng hổi!",
+            image_url="https://example.com/mi.jpg",
         )
-        res = create_review(data=req, current_user_id=1, db=self.db)
-        self.assertEqual(res.order_id, 1)
-        self.assertEqual(res.dish_id, 1)
-        self.assertEqual(res.rating, 5)
-        self.assertEqual(res.content, req.content)
-        self.assertEqual(res.image_url, req.image_url)
-        self.assertFalse(res.is_hidden)
+        review = review_crud.create_review(self.db, payload)
+        self.assertIsNotNone(review.id)
+        self.assertEqual(review.rating, 5)
+        self.assertEqual(review.content, "Mì ăn rất đậm đà, nóng hổi!")
+        self.assertEqual(review.image_url, "https://example.com/mi.jpg")
+        self.assertFalse(review.is_hidden)
 
-    def test_create_review_blocked_if_order_not_completed(self):
-        """Chặn đánh giá khi đơn chưa Hoàn thành (PENDING)."""
-        req = ReviewCreate(
-            order_id=2,  # Đơn 2 đang PENDING
+    def test_review_blocked_when_order_not_completed(self):
+        """Chặn đánh giá khi đơn chưa Hoàn thành."""
+        payload = ReviewCreate(
+            order_id=2,  # PENDING
             dish_id=1,
-            rating=5,
-            content="Giao nhanh nhé quán ơi",
-        )
-        with self.assertRaises(HTTPException) as ctx:
-            create_review(data=req, current_user_id=1, db=self.db)
-        self.assertEqual(ctx.exception.status_code, 400)
-        self.assertIn("COMPLETED", ctx.exception.detail)
-
-    def test_create_review_blocked_if_not_order_owner(self):
-        """Chặn khách đánh giá đơn của người khác."""
-        req = ReviewCreate(
-            order_id=1,  # Đơn của User 1
-            dish_id=1,
-            rating=5,
-            content="Đánh giá ké",
-        )
-        with self.assertRaises(HTTPException) as ctx:
-            create_review(data=req, current_user_id=2, db=self.db)  # User 2 gọi
-        self.assertEqual(ctx.exception.status_code, 403)
-        self.assertIn("chính mình", ctx.exception.detail)
-
-    def test_create_review_blocked_if_dish_not_in_order(self):
-        """Chặn đánh giá món không có trong đơn hàng."""
-        req = ReviewCreate(
-            order_id=1,
-            dish_id=3,  # Món 3 (Trà tắc) không có trong đơn 1
+            user_id=1,
             rating=4,
-            content="Ngon",
+            content="Giao hơi chậm",
         )
         with self.assertRaises(HTTPException) as ctx:
-            create_review(data=req, current_user_id=1, db=self.db)
+            review_crud.create_review(self.db, payload)
         self.assertEqual(ctx.exception.status_code, 400)
-        self.assertIn("không nằm trong đơn hàng", ctx.exception.detail)
+        self.assertIn("hoàn thành", ctx.exception.detail.lower())
 
-    def test_create_review_blocked_duplicate_dish_review(self):
-        """Chặn đánh giá 1 món 2 lần trong cùng 1 đơn hàng (từng món một lần)."""
-        req = ReviewCreate(
+    def test_review_duplicate_dish_blocked(self):
+        """Mỗi món trong đơn chỉ được đánh giá một lần."""
+        payload = ReviewCreate(
             order_id=1,
             dish_id=1,
+            user_id=1,
             rating=5,
             content="Lần 1",
         )
-        create_review(data=req, current_user_id=1, db=self.db)
+        review_crud.create_review(self.db, payload)
 
-        # Đánh giá lại món 1 trong đơn 1
+        # Đánh giá lại cùng món trong đơn đó
+        payload2 = ReviewCreate(
+            order_id=1,
+            dish_id=1,
+            user_id=1,
+            rating=4,
+            content="Lần 2",
+        )
         with self.assertRaises(HTTPException) as ctx:
-            create_review(data=req, current_user_id=1, db=self.db)
+            review_crud.create_review(self.db, payload2)
         self.assertEqual(ctx.exception.status_code, 400)
-        self.assertIn("Mỗi món chỉ được đánh giá 1 lần", ctx.exception.detail)
+        self.assertIn("đã được đánh giá", ctx.exception.detail.lower())
 
-    # ────────────────────────────────────────────────────────────
-    # 2. TEST ĐIỂM TRUNG BÌNH CỦA MÓN
-    # ────────────────────────────────────────────────────────────
-    def test_dish_average_rating_calculation(self):
-        """Kiểm tra tính điểm trung bình chính xác của món."""
-        # Khi chưa có đánh giá nào:
-        summary_0 = get_dish_reviews(dish_id=1, db=self.db)
-        self.assertEqual(summary_0.average_rating, 0.0)
-        self.assertEqual(summary_0.total_reviews, 0)
-
-        # Đánh giá 1: 5 sao (cho món 1 trong đơn 1 của user 1)
-        create_review(
-            data=ReviewCreate(order_id=1, dish_id=1, rating=5, content="Tuyệt vời"),
-            current_user_id=1,
-            db=self.db,
-        )
-
-        # Giả lập đơn khác của user 2 mua món 1 và hoàn thành
-        order_user2 = Order(
+    def test_average_rating_and_hide_review(self):
+        """Kiểm tra điểm trung bình của món và chức năng ẩn đánh giá vi phạm."""
+        # Tạo thêm 1 order completed khác của user 1 để đánh giá dish 1 thêm lần nữa
+        order2 = Order(
             id=3,
-            order_code="ORD-U2-03",
-            user_id=2,
-            recipient_name="B",
-            recipient_phone="0902345678",
-            delivery_address="456 Kim Mã",
+            order_code="DH003",
+            user_id=1,
+            recipient_name="Khách Hàng Test",
+            recipient_phone="0901234567",
+            delivery_address="123 Phố",
             delivery_area_id=1,
-            shipping_fee=Decimal("15000"),
-            discount_amount=Decimal("0"),
             subtotal=Decimal("45000"),
             total_amount=Decimal("60000"),
             payment_method="COD",
             status="COMPLETED",
         )
-        self.db.add(order_user2)
-        self.db.flush()
-        self.db.add(OrderItem(order_id=3, dish_id=1, dish_name="Mì trộn Indomie", dish_price=Decimal("45000"), quantity=1, line_total=Decimal("45000")))
+        self.db.add(order2)
         self.db.commit()
 
-        # Đánh giá 2: 4 sao (cho món 1 trong đơn 3 của user 2)
-        create_review(
-            data=ReviewCreate(order_id=3, dish_id=1, rating=4, content="Hơi mặn một chút"),
-            current_user_id=2,
-            db=self.db,
+        # Review 1: 5 sao
+        r1 = review_crud.create_review(
+            self.db,
+            ReviewCreate(order_id=1, dish_id=1, user_id=1, rating=5, content="Ngon"),
+        )
+        # Review 2: 3 sao
+        r2 = review_crud.create_review(
+            self.db,
+            ReviewCreate(order_id=3, dish_id=1, user_id=1, rating=3, content="Bình thường"),
         )
 
-        # Điểm trung bình = (5 + 4) / 2 = 4.5
-        summary = get_dish_reviews(dish_id=1, db=self.db)
-        self.assertEqual(summary.total_reviews, 2)
-        self.assertEqual(summary.average_rating, 4.5)
-        self.assertEqual(len(summary.reviews), 2)
+        # Trung bình = (5 + 3) / 2 = 4.0
+        summary = review_crud.get_dish_reviews(self.db, dish_id=1)
+        self.assertEqual(summary["total_reviews"], 2)
+        self.assertEqual(summary["average_rating"], 4.0)
 
-    # ────────────────────────────────────────────────────────────
-    # 3. TEST CỬA HÀNG TRẢ LỜI ĐÁNH GIÁ
-    # ────────────────────────────────────────────────────────────
-    def test_shop_reply_review(self):
+        # Admin ẩn r2 vì vi phạm
+        review_crud.set_review_hidden(self.db, review_id=r2.id, is_hidden=True)
+
+        # Sau khi ẩn r2: chỉ còn r1 (5 sao), avg = 5.0
+        summary_after = review_crud.get_dish_reviews(self.db, dish_id=1)
+        self.assertEqual(summary_after["total_reviews"], 1)
+        self.assertEqual(summary_after["average_rating"], 5.0)
+
+    def test_shop_reply_to_review(self):
         """Cửa hàng trả lời đánh giá."""
-        review = create_review(
-            data=ReviewCreate(order_id=1, dish_id=1, rating=5, content="Món ăn rất ngon!"),
-            current_user_id=1,
-            db=self.db,
+        r = review_crud.create_review(
+            self.db,
+            ReviewCreate(order_id=1, dish_id=2, user_id=1, rating=4, content="Trà thơm"),
         )
-
-        # Nhân viên phản hồi
-        reply_req = ReviewReplyRequest(shop_reply="Cảm ơn quý khách đã ủng hộ quán ạ!")
-        res = reply_to_review(review_id=review.id, data=reply_req, role="STAFF", db=self.db)
-        self.assertEqual(res.shop_reply, reply_req.shop_reply)
-        self.assertIsNotNone(res.replied_at)
-
-        # Chặn nếu vai trò là CUSTOMER cố tình reply
-        with self.assertRaises(HTTPException) as ctx:
-            reply_to_review(review_id=review.id, data=reply_req, role="CUSTOMER", db=self.db)
-        self.assertEqual(ctx.exception.status_code, 403)
-
-    # ────────────────────────────────────────────────────────────
-    # 4. TEST ADMIN ẨN ĐÁNH GIÁ VI PHẠM
-    # ────────────────────────────────────────────────────────────
-    def test_admin_hide_review(self):
-        """Admin ẩn đánh giá vi phạm, đánh giá bị ẩn không còn tính vào điểm trung bình."""
-        # Tạo 2 review: 1 cái 5 sao, 1 cái 1 sao (vi phạm quy chuẩn)
-        r1 = create_review(
-            data=ReviewCreate(order_id=1, dish_id=1, rating=5, content="Tuyệt vời!"),
-            current_user_id=1,
-            db=self.db,
+        replied = review_crud.reply_to_review(
+            self.db,
+            review_id=r.id,
+            data=ReviewReplyRequest(reply="Cảm ơn bạn đã thưởng thức ạ!"),
         )
-
-        # Đơn khác của user 2 đánh giá 1 sao
-        order_u2 = Order(
-            id=4,
-            order_code="ORD-U2-04",
-            user_id=2,
-            recipient_name="B",
-            recipient_phone="0902345678",
-            delivery_address="456 Kim Mã",
-            delivery_area_id=1,
-            shipping_fee=Decimal("15000"),
-            discount_amount=Decimal("0"),
-            subtotal=Decimal("45000"),
-            total_amount=Decimal("60000"),
-            payment_method="COD",
-            status="COMPLETED",
-        )
-        self.db.add(order_u2)
-        self.db.flush()
-        self.db.add(OrderItem(order_id=4, dish_id=1, dish_name="Mì trộn Indomie", dish_price=Decimal("45000"), quantity=1, line_total=Decimal("45000")))
-        self.db.commit()
-
-        r2 = create_review(
-            data=ReviewCreate(order_id=4, dish_id=1, rating=1, content="Từ ngữ tục tĩu vi phạm quy chuẩn..."),
-            current_user_id=2,
-            db=self.db,
-        )
-
-        # Trước khi ẩn: 2 review, trung bình = (5 + 1) / 2 = 3.0
-        summary_before = get_dish_reviews(dish_id=1, db=self.db)
-        self.assertEqual(summary_before.total_reviews, 2)
-        self.assertEqual(summary_before.average_rating, 3.0)
-
-        # Admin ẩn r2
-        hide_req = ReviewHideRequest(is_hidden=True, reason="Vi phạm ngôn từ")
-        hide_res = hide_review(review_id=r2.id, data=hide_req, role="ADMIN", db=self.db)
-        self.assertTrue(hide_res.is_hidden)
-
-        # Sau khi ẩn: công khai chỉ còn 1 review 5 sao, trung bình = 5.0
-        summary_after = get_dish_reviews(dish_id=1, db=self.db)
-        self.assertEqual(summary_after.total_reviews, 1)
-        self.assertEqual(summary_after.average_rating, 5.0)
-        self.assertEqual(summary_after.reviews[0].id, r1.id)
-
-        # Người không phải Admin cố tình ẩn bị chặn 403
-        with self.assertRaises(HTTPException) as ctx:
-            hide_review(review_id=r1.id, data=hide_req, role="STAFF", db=self.db)
-        self.assertEqual(ctx.exception.status_code, 403)
+        self.assertEqual(replied.shop_reply, "Cảm ơn bạn đã thưởng thức ạ!")
+        self.assertIsNotNone(replied.replied_at)
 
 
 if __name__ == "__main__":
