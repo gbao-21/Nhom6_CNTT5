@@ -21,6 +21,7 @@ from app.routers import (
     dishes,
     health,
     items,
+    menu,
     orders,
     reviews,
     users,
@@ -34,12 +35,16 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         ensure_schema_and_seed_data()
-        print(f"[DB] Đã kết nối MySQL {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME} (đã tạo bảng & dữ liệu mẫu)")
+        print(
+            f"[DB] Connected to MySQL "
+            f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME} "
+            "(tables and sample data are ready)"
+        )
     except OperationalError as error:
-        print("[DB] KHÔNG kết nối được MySQL! Kiểm tra MySQL đã bật chưa và file .env.")
+        print("[DB] Could not connect to MySQL. Check that MySQL is running and backend/.env is correct.")
         if "Unknown database" in str(error.orig):
-            print("[DB] Chưa có database -> mở MySQL Workbench, chạy file sql/init.sql")
-        print(f"[DB] Chi tiết: {error.orig}")
+            print("[DB] Database is missing. Run sql/init.sql in MySQL Workbench.")
+        print(f"[DB] Error: {error.orig}")
     yield
 
 
@@ -59,6 +64,7 @@ app.include_router(items.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(dishes.router, prefix="/api")
+app.include_router(menu.router, prefix="/api")
 app.include_router(delivery_areas.router, prefix="/api")
 app.include_router(carts.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")

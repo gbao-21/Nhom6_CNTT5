@@ -1,16 +1,22 @@
-"""API quản lý giỏ hàng: /api/carts
+"""API quản lý giỏ hàng & tính tiền: /api/carts
 
-Quy tắc nghiệp vụ (T3D25F6):
-- Cùng món nhưng khác tuỳ chọn / ghi chú là dòng riêng; trùng hoàn toàn thì cộng dồn số lượng.
-- Chặn món ăn đã hết hàng hoặc bị ẩn (và chặn tuỳ chọn hết/không hợp lệ).
-- Chỉ được phép xem, thêm, sửa, xoá trên giỏ hàng của chính mình.
+Quy tắc nghiệp vụ:
+- Xem giỏ hàng và tính tiền ở server:
+  + Thành tiền từng dòng = (giá món + tùy chọn) * số lượng
+  + Tạm tính (subtotal), phí ship theo khu vực (module Tài khoản), giảm giá (module Khuyến mãi), tổng (total_amount)
+  + Báo cảnh báo khi món đã hết hoặc bị đổi giá so với lúc thêm vào giỏ.
+- Thêm, sửa, xoá giỏ hàng:
+  + Cùng món nhưng khác tuỳ chọn / ghi chú là dòng riêng; trùng hoàn toàn thì cộng dồn số lượng.
+  + Chặn món ăn đã hết hàng hoặc bị ẩn.
+  + Chỉ được phép thao tác trên giỏ hàng của chính mình.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.dependencies import get_current_user_id
 from app.schemas.cart import (
+    CartCalculateRequest,
     CartItemCreate,
     CartItemResponse,
     CartItemUpdate,
@@ -21,13 +27,47 @@ from app.services import cart_service
 router = APIRouter(prefix="/carts", tags=["Carts"])
 
 
-@router.get("", response_model=CartResponse, summary="Xem giỏ hàng của mình")
-@router.get("/me", response_model=CartResponse, summary="Xem giỏ hàng của mình")
+@router.get(
+    "",
+    response_model=CartResponse,
+    summary="Xem giỏ hàng và tính tiền (tạm tính, phí ship theo khu vực, giảm giá, tổng, cảnh báo hết món/đổi giá)",
+)
+@router.get(
+    "/me",
+    response_model=CartResponse,
+    summary="Xem giỏ hàng của mình và tính tiền",
+)
 def get_my_cart(
+    delivery_area_id: int | None = Query(
+        default=None,
+        description="ID khu vực giao hàng để tính phí ship (ví dụ: 1 = Hà Đông, 2 = Thanh Xuân)",
+    ),
+    voucher_code: str | None = Query(
+        default=None,
+        description="Mã khuyến mãi / giảm giá (ví dụ: GIAM10, GIAM20K, FREESHIP)",
+    ),
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
-    return cart_service.get_my_cart(db, current_user_id)
+    return cart_service.get_my_cart(
+        db,
+        current_user_id=current_user_id,
+        delivery_area_id=delivery_area_id,
+        voucher_code=voucher_code,
+    )
+
+
+@router.post(
+    "/calculate",
+    response_model=CartResponse,
+    summary="API tính tiền giỏ hàng ở server (thành tiền từng dòng, tạm tính, phí ship, giảm giá, tổng & cảnh báo)",
+)
+def calculate_my_cart(
+    data: CartCalculateRequest,
+    current_user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    return cart_service.calculate_my_cart(db, current_user_id, data)
 
 
 @router.post(
@@ -104,11 +144,18 @@ def _verify_target_user(target_user_id: int, current_user_id: int) -> None:
 )
 def get_user_cart(
     target_user_id: int,
+    delivery_area_id: int | None = None,
+    voucher_code: str | None = None,
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     _verify_target_user(target_user_id, current_user_id)
-    return cart_service.get_my_cart(db, current_user_id)
+    return cart_service.get_my_cart(
+        db,
+        current_user_id=current_user_id,
+        delivery_area_id=delivery_area_id,
+        voucher_code=voucher_code,
+    )
 
 
 @router.post(
