@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_address    VARCHAR(500) NOT NULL,
   delivery_area_id    INT NOT NULL,
   shipping_fee        DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  coupon_code         VARCHAR(50) NULL,
   discount_amount     DECIMAL(15, 2) NOT NULL DEFAULT 0,
   subtotal            DECIMAL(15, 2) NOT NULL,
   total_amount        DECIMAL(15, 2) NOT NULL,
@@ -175,3 +176,73 @@ CREATE TABLE IF NOT EXISTS order_status_histories (
   CONSTRAINT fk_status_histories_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   CONSTRAINT fk_status_histories_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Bảng mã giảm giá (coupons)
+CREATE TABLE IF NOT EXISTS coupons (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  code             VARCHAR(50) NOT NULL UNIQUE,
+  description      VARCHAR(500) NULL,
+  discount_type    VARCHAR(20) NOT NULL DEFAULT 'FIXED',
+  discount_value   DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  min_order_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  max_uses         INT NULL,
+  used_count       INT NOT NULL DEFAULT 0,
+  valid_from       DATETIME NULL,
+  valid_to         DATETIME NULL,
+  status           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO coupons (id, code, description, discount_type, discount_value, min_order_amount, max_uses, used_count, status) VALUES
+  (1, 'GIAM10K', 'Giảm 10.000đ cho đơn từ 40.000đ', 'FIXED', 10000, 40000, 10, 0, 'ACTIVE'),
+  (2, 'SALE10', 'Giảm 10% cho mọi đơn hàng', 'PERCENT', 10, 0, 50, 0, 'ACTIVE');
+
+-- 10. Bảng phiếu giảm giá cá nhân (vouchers)
+CREATE TABLE IF NOT EXISTS vouchers (
+  id                  INT AUTO_INCREMENT PRIMARY KEY,
+  code                VARCHAR(50) NOT NULL UNIQUE,
+  discount_type       VARCHAR(20) NOT NULL DEFAULT 'PERCENT',
+  discount_value      DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  min_order_amount    DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  max_discount_amount DECIMAL(15, 2) NULL,
+  valid_from          DATETIME NULL,
+  valid_to            DATETIME NULL,
+  max_uses            INT NULL,
+  used_count          INT NOT NULL DEFAULT 0,
+  status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 11. Bảng đánh giá món ăn (reviews)
+CREATE TABLE IF NOT EXISTS reviews (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  order_id    INT NOT NULL,
+  dish_id     INT NULL,
+  user_id     INT NULL,
+  rating      SMALLINT NOT NULL,
+  content     TEXT NULL,
+  image_url   VARCHAR(500) NULL,
+  shop_reply  TEXT NULL,
+  replied_at  DATETIME NULL,
+  is_hidden   TINYINT(1) NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_reviews_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_reviews_dish FOREIGN KEY (dish_id) REFERENCES dishes(id) ON DELETE SET NULL,
+  CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. Bảng tin nhắn hỗ trợ (chat_messages)
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  customer_id INT NULL,
+  sender_id   INT NULL,
+  content     TEXT NOT NULL,
+  is_read     TINYINT(1) NOT NULL DEFAULT 0,
+  sent_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_chat_customer FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_chat_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
