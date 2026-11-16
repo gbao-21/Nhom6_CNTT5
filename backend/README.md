@@ -118,6 +118,10 @@ Kiểm tra:
 | Method | URL | Việc làm | Body (JSON) |
 |---|---|---|---|
 | GET | `/api/health` | Kiểm tra server + DB | |
+| GET | `/api/menu` hoặc `/api/menu/overview` | Lấy thực đơn theo danh mục | |
+| GET | `/api/menu/categories` | Danh mục đang hiển thị | |
+| GET | `/api/menu/items` hoặc `/api/menu/dishes` | Danh sách món; hỗ trợ `?category_id=1&q=mì` | |
+| GET | `/api/menu/items/{dish_id}` hoặc `/api/menu/dishes/{dish_id}` | Chi tiết món và các tùy chọn | |
 | GET | `/api/items` | Danh sách, tìm theo tên `?q=com` | |
 | GET | `/api/items/{id}` | Chi tiết | |
 | POST | `/api/items` | Thêm mới | `{"name": "Trà đá", "description": "...", "price": 5000}` |
@@ -211,4 +215,3 @@ Chờ xác nhận (PENDING) ──> Đã xác nhận (CONFIRMED) ──> Đang c
 | `GET` | `/api/orders/my-orders/{order_id}` | Theo dõi đơn: xem chi tiết đơn kèm món ăn, tuỳ chọn snapshot và dòng thời gian trạng thái (`status_history`). Chặn xem đơn của người khác (HTTP 403). |
 | `POST` | `/api/orders/{order_id}/cancel` | Huỷ đơn theo điều kiện: Khách huỷ khi PENDING; Nhân viên huỷ trước DELIVERING kèm lý do. Ghi lại `OrderStatusHistory`. |
 | `PATCH` | `/api/orders/{order_id}/status` | Cập nhật trạng thái theo bảng chuyển trạng thái hợp lệ và lưu lịch sử. |
-
