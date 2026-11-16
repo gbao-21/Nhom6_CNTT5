@@ -101,11 +101,17 @@ pip install -r requirements.txt
 
 ## 6. Bước 4: chạy server
 
-```bash
-uvicorn app.main:app --reload
+Đảm bảo terminal đang ở **thư mục `backend/`** (nơi có `app/` và `requirements.txt`). Nếu terminal đang ở thư mục gốc dự án, chạy:
+
+```powershell
+Set-Location .\backend
+..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Terminal in ra `[DB] Đã kết nối MySQL ...` là thành công. `--reload` giúp server tự khởi động lại mỗi khi bạn lưu code. Tắt server: `Ctrl + C`.
+Không chạy `uvicorn main:app --reload`: ứng dụng là `app.main:app`, không phải `main:app`.
+
+Terminal in ra `Application startup complete` là server đã khởi động. `--reload` giúp server tự khởi động lại mỗi khi bạn lưu code. Tắt server: `Ctrl + C`.
 
 Kiểm tra:
 
@@ -118,6 +124,10 @@ Kiểm tra:
 | Method | URL | Việc làm | Body (JSON) |
 |---|---|---|---|
 | GET | `/api/health` | Kiểm tra server + DB | |
+| GET | `/api/menu` hoặc `/api/menu/overview` | Lấy thực đơn theo danh mục | |
+| GET | `/api/menu/categories` | Danh mục đang hiển thị | |
+| GET | `/api/menu/items` hoặc `/api/menu/dishes` | Danh sách món; hỗ trợ `?category_id=1&q=mì` | |
+| GET | `/api/menu/items/{dish_id}` hoặc `/api/menu/dishes/{dish_id}` | Chi tiết món và các tùy chọn | |
 | GET | `/api/items` | Danh sách, tìm theo tên `?q=com` | |
 | GET | `/api/items/{id}` | Chi tiết | |
 | POST | `/api/items` | Thêm mới | `{"name": "Trà đá", "description": "...", "price": 5000}` |
@@ -211,4 +221,3 @@ Chờ xác nhận (PENDING) ──> Đã xác nhận (CONFIRMED) ──> Đang c
 | `GET` | `/api/orders/my-orders/{order_id}` | Theo dõi đơn: xem chi tiết đơn kèm món ăn, tuỳ chọn snapshot và dòng thời gian trạng thái (`status_history`). Chặn xem đơn của người khác (HTTP 403). |
 | `POST` | `/api/orders/{order_id}/cancel` | Huỷ đơn theo điều kiện: Khách huỷ khi PENDING; Nhân viên huỷ trước DELIVERING kèm lý do. Ghi lại `OrderStatusHistory`. |
 | `PATCH` | `/api/orders/{order_id}/status` | Cập nhật trạng thái theo bảng chuyển trạng thái hợp lệ và lưu lịch sử. |
-
