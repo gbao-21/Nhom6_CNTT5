@@ -101,11 +101,17 @@ pip install -r requirements.txt
 
 ## 6. Bước 4: chạy server
 
-```bash
-uvicorn app.main:app --reload
+Đảm bảo terminal đang ở **thư mục `backend/`** (nơi có `app/` và `requirements.txt`). Nếu terminal đang ở thư mục gốc dự án, chạy:
+
+```powershell
+Set-Location .\backend
+..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Terminal in ra `[DB] Đã kết nối MySQL ...` là thành công. `--reload` giúp server tự khởi động lại mỗi khi bạn lưu code. Tắt server: `Ctrl + C`.
+Không chạy `uvicorn main:app --reload`: ứng dụng là `app.main:app`, không phải `main:app`.
+
+Terminal in ra `Application startup complete` là server đã khởi động. `--reload` giúp server tự khởi động lại mỗi khi bạn lưu code. Tắt server: `Ctrl + C`.
 
 Kiểm tra:
 
