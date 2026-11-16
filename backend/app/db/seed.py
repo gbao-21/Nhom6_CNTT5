@@ -10,6 +10,7 @@ from app.models.coupon import Coupon
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish
 from app.models.user import User
+from app.models.voucher import Voucher
 
 
 def ensure_schema_and_seed_data() -> None:
@@ -155,6 +156,21 @@ def ensure_schema_and_seed_data() -> None:
                     discount_value=Decimal("10"),
                     min_order_amount=Decimal("0"),
                     max_uses=50,
+                    used_count=0,
+                    status="ACTIVE",
+                )
+            )
+
+        # 6. Seed Voucher mẫu
+        if db.query(Voucher).filter(Voucher.code == "WELCOME50").first() is None:
+            db.add(
+                Voucher(
+                    code="WELCOME50",
+                    discount_type="PERCENT",
+                    discount_value=Decimal("20"),
+                    min_order_amount=Decimal("50000"),
+                    max_discount_amount=Decimal("30000"),
+                    max_uses=100,
                     used_count=0,
                     status="ACTIVE",
                 )
