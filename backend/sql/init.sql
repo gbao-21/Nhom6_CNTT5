@@ -88,14 +88,15 @@ CREATE TABLE IF NOT EXISTS carts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS cart_items (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  cart_id          INT NOT NULL,
-  dish_id          INT NOT NULL,
-  selected_options JSON NULL,
-  note             VARCHAR(500) NULL,
-  quantity         INT NOT NULL DEFAULT 1,
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id                  INT AUTO_INCREMENT PRIMARY KEY,
+  cart_id             INT NOT NULL,
+  dish_id             INT NOT NULL,
+  dish_price_snapshot DECIMAL(15, 2) NULL,
+  selected_options    JSON NULL,
+  note                VARCHAR(500) NULL,
+  quantity            INT NOT NULL DEFAULT 1,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
   CONSTRAINT fk_cart_items_dish FOREIGN KEY (dish_id) REFERENCES dishes(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column,
     Integer,
+    Numeric,
     String,
     DateTime,
     ForeignKey,
@@ -56,6 +57,8 @@ class CartItem(Base):
         ForeignKey("dishes.id"),
         nullable=False,
     )
+    # Lưu giá món tại thời điểm thêm vào giỏ để phát hiện khi món bị đổi giá
+    dish_price_snapshot = Column(Numeric(15, 2), nullable=True)
     selected_options = Column(JSON, nullable=True)
     note = Column(String(500), nullable=True)
     quantity = Column(
