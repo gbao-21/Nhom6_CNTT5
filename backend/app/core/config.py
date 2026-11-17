@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     # Chuỗi các origin cách nhau bằng dấu phẩy, hoặc "*"
     CORS_ORIGINS: str = "*"
 
+    # Khung giờ mở cửa nhận giao hàng (HH:MM)
+    STORE_OPEN_TIME: str = "07:00"
+    STORE_CLOSE_TIME: str = "23:00"
+
+    # Thời gian (giây) chống bấm đặt đơn trùng lặp liên tiếp
+    ORDER_DEDUP_WINDOW_SECONDS: int = 15
+
     @property
     def database_url(self) -> str:
         # mysql+pymysql://user:password@host:port/database
