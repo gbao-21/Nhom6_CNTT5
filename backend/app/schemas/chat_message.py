@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class ChatMessageCreate(BaseModel):
-    customer_id: Optional[int] = None
-    sender_id: Optional[int] = None
+    customer_id: int
+    sender_id: int
     content: str = Field(..., min_length=1)
 
 
@@ -22,3 +22,14 @@ class ChatMessageResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class ConversationSummary(BaseModel):
+    customer_id: int
+    unread_count: int
+    last_message_id: int
+    last_content: str
+    last_sent_at: datetime
+
+
+class MarkReadResponse(BaseModel):
+    marked: int
