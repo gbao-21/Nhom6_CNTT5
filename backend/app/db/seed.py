@@ -13,6 +13,13 @@ from app.models.user import User
 from app.models.voucher import Voucher
 
 
+SEED_DISH_IMAGES = {
+    1: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80",
+    2: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+    3: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+}
+
+
 def ensure_schema_and_seed_data() -> None:
     """Đảm bảo các bảng có đủ cột còn thiếu và chèn dữ liệu mẫu nếu DB đang trống."""
     inspector = inspect(engine)
@@ -41,6 +48,7 @@ def ensure_schema_and_seed_data() -> None:
             if "coupon_code" not in order_cols:
                 conn.execute(
                     text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
+                )
     if "cart_items" in table_names:
         cart_item_cols = {col["name"] for col in inspector.get_columns("cart_items")}
         with engine.begin() as conn:
@@ -101,6 +109,7 @@ def ensure_schema_and_seed_data() -> None:
                     name="Mì trộn Indomie đặc biệt",
                     description="Mì trộn kèm trứng lòng đào và xúc xích",
                     price=Decimal("45000"),
+                    image_url=SEED_DISH_IMAGES[1],
                     is_available=True,
                     is_active=True,
                     status="AVAILABLE",
@@ -114,6 +123,7 @@ def ensure_schema_and_seed_data() -> None:
                     name="Cơm gà xối mỡ (Hết hàng)",
                     description="Món dùng để test chặn món hết hàng",
                     price=Decimal("55000"),
+                    image_url=SEED_DISH_IMAGES[2],
                     is_available=False,
                     is_active=True,
                     status="OUT_OF_STOCK",
@@ -127,11 +137,17 @@ def ensure_schema_and_seed_data() -> None:
                     name="Cháo sườn sụn (Món ẩn)",
                     description="Món dùng để test chặn món bị ẩn",
                     price=Decimal("35000"),
+                    image_url=SEED_DISH_IMAGES[3],
                     is_available=True,
                     is_active=False,
                     status="HIDDEN",
                 )
             )
+
+        for dish_id, image_url in SEED_DISH_IMAGES.items():
+            dish = db.get(Dish, dish_id)
+            if dish is not None and not dish.image_url:
+                dish.image_url = image_url
 
         # 4. Seed DeliveryArea
         if db.get(DeliveryArea, 1) is None:
