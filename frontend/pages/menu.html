@@ -110,29 +110,61 @@
     <!-- JavaScript xử lý gọi API và giao diện -->
     <script>
         const API_BASE = "http://127.0.0.1:8000/api";
+        const menuSearchInput = document.getElementById('searchInput');
         const newDishCategorySelect = document.getElementById('newDishCategory');
         const createDishButton = document.getElementById('createDishButton');
         const createDishStatus = document.getElementById('createDishStatus');
         let activeDishCategoriesAvailable = false;
+        let menuCategories = [];
 
         async function fetchMenuOverview() {
+            let categories;
             try {
                 const response = await fetch(`${API_BASE}/menu/overview`);
                 if (!response.ok) {
                     throw new Error(`Backend trả về lỗi HTTP ${response.status}`);
                 }
                 const data = await response.json();
-                renderMenu(data.categories || []);
-            } catch (error) {
-                console.error("Lỗi khi tải thực đơn:", error);
-                const errorMessage = error instanceof TypeError
-                    ? 'Không kết nối được backend tại http://127.0.0.1:8000. Hãy chạy uvicorn app.main:app --reload trong thư mục backend và kiểm tra MySQL.'
-                    : `Không thể tải thực đơn: ${error.message}`;
-                const errorElement = document.createElement('p');
-                errorElement.className = 'rounded-xl border bg-white p-6 text-center text-red-600';
-                errorElement.textContent = errorMessage;
-                document.getElementById('menuSectionsContainer').replaceChildren(errorElement);
+                categories = Array.isArray(data.categories) ? data.categories : [];
+            } catch (overviewError) {
+                try {
+                    const [categoriesResponse, dishesResponse] = await Promise.all([
+                        fetch(`${API_BASE}/categories`),
+                        fetch(`${API_BASE}/dishes`),
+                    ]);
+                    if (!categoriesResponse.ok || !dishesResponse.ok) {
+                        throw new Error(
+                            `Backend trả về lỗi HTTP ${categoriesResponse.status}/${dishesResponse.status}`,
+                        );
+                    }
+
+                    const [allCategories, allDishes] = await Promise.all([
+                        categoriesResponse.json(),
+                        dishesResponse.json(),
+                    ]);
+                    categories = allCategories
+                        .filter((category) => category.is_active)
+                        .map((category) => ({
+                            ...category,
+                            dishes: allDishes.filter(
+                                (dish) => dish.is_active && dish.category_id === category.id,
+                            ),
+                        }));
+                } catch (fallbackError) {
+                    console.error("Không tải được thực đơn:", overviewError, fallbackError);
+                    document.getElementById('categoryNavLinks').replaceChildren();
+                    document.getElementById('featuredDishesContainer').replaceChildren();
+                    const errorElement = document.createElement('p');
+                    errorElement.className = 'rounded-xl border bg-white p-6 text-center text-red-600';
+                    errorElement.textContent =
+                        'Không thể tải thực đơn. Hãy kiểm tra backend và thử tải lại trang.';
+                    document.getElementById('menuSectionsContainer').replaceChildren(errorElement);
+                    return;
+                }
             }
+
+            menuCategories = categories;
+            updateMenuDisplay();
         }
 
         async function loadDishCategories() {
@@ -164,31 +196,6 @@
                         : error.message,
                     true,
                 );
-                if (response.ok) {
-                    const data = await response.json();
-                    renderMenu(data.categories || []);
-                    return;
-                }
-            } catch (error) {
-                // Tiếp tục thử fallback bên dưới
-            }
-
-            try {
-                const [catsRes, dishesRes] = await Promise.all([
-                    fetch(`${API_BASE}/categories`),
-                    fetch(`${API_BASE}/dishes`)
-                ]);
-                if (catsRes.ok && dishesRes.ok) {
-                    const categories = await catsRes.json();
-                    const dishes = await dishesRes.json();
-                    const catMap = categories.map(cat => ({
-                        ...cat,
-                        dishes: dishes.filter(d => d.category_id === cat.id)
-                    }));
-                    renderMenu(catMap);
-                }
-            } catch (err) {
-                console.error("Lỗi khi tải thực đơn:", err);
             }
         }
 
@@ -204,6 +211,35 @@
             }
             return `Backend trả về lỗi HTTP ${status}`;
         }
+
+        function updateMenuDisplay() {
+            const searchTerm = menuSearchInput.value.trim().toLocaleLowerCase('vi');
+            if (!searchTerm) {
+                renderMenu(menuCategories);
+                return;
+            }
+
+            const filteredCategories = menuCategories
+                .map((category) => {
+                    const categoryMatches = category.name.toLocaleLowerCase('vi').includes(searchTerm);
+                    return {
+                        ...category,
+                        dishes: categoryMatches
+                            ? category.dishes
+                            : category.dishes.filter((dish) =>
+                                `${dish.name} ${dish.description || ''}`
+                                    .toLocaleLowerCase('vi')
+                                    .includes(searchTerm),
+                            ),
+                    };
+                })
+                .filter((category) => category.name.toLocaleLowerCase('vi').includes(searchTerm) ||
+                    category.dishes.length > 0);
+
+            renderMenu(filteredCategories);
+        }
+
+        menuSearchInput.addEventListener('input', updateMenuDisplay);
 
         document.getElementById('createDishForm').addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -263,8 +299,30 @@
             }
         });
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            })[character]);
+        }
+
+        function getSafeImageUrl(value, fallback) {
+            if (typeof value !== 'string' || !value.trim()) return fallback;
+
+            try {
+                const url = new URL(value, window.location.origin);
+                return ['http:', 'https:'].includes(url.protocol) ? url.href : fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
         function formatPrice(price) {
-            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
+                .format(Number(price) || 0);
         }
 
         function renderMenu(categories) {
@@ -275,6 +333,20 @@
             navLinks.innerHTML = '';
             mainContainer.innerHTML = '';
             featuredContainer.innerHTML = '';
+
+            if (categories.length === 0) {
+                mainContainer.innerHTML = `
+                    <p class="rounded-xl border bg-white p-6 text-center text-gray-500">
+                        ${menuSearchInput.value.trim()
+                            ? 'Không tìm thấy món ăn phù hợp.'
+                            : 'Chưa có danh mục món ăn.'}
+                    </p>
+                `;
+                featuredContainer.innerHTML = `
+                    <p class="text-sm text-gray-500">Chưa có món nổi bật.</p>
+                `;
+                return;
+            }
 
             let allDishes = [];
 
@@ -311,17 +383,20 @@
                         const isSoldOut = !dish.is_available;
                         const opacityClass = isSoldOut ? 'opacity-50 pointer-events-none' : '';
                         const badgeHTML = isSoldOut ? '<span class="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">Hết hàng</span>' : '';
-                        const imageUrl = dish.image_url || 'https://via.placeholder.com/300x200?text=Bếp+Việt';
+                        const imageUrl = getSafeImageUrl(
+                            dish.image_url,
+                            'https://via.placeholder.com/300x200?text=B%E1%BA%BFp+Vi%E1%BB%87t',
+                        );
 
                         return `
                             <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between relative ${opacityClass}">
                                 ${badgeHTML}
                                 <div>
-                                    <img src="${imageUrl}" alt="${dish.name}" class="w-full h-40 object-cover">
+                                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" class="w-full h-40 object-cover">
                                     <div class="p-4">
-                                        <h3 class="font-bold text-base text-gray-800 line-clamp-1">${dish.name}</h3>
-                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">${dish.description || 'Chưa có mô tả'}</p>
-                                        <a href="dish-detail.html?id=${dish.id}" class="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold mt-2">
+                                        <h3 class="font-bold text-base text-gray-800 line-clamp-1">${escapeHtml(dish.name)}</h3>
+                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">${escapeHtml(dish.description || 'Chưa có mô tả')}</p>
+                                        <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold mt-2">
                                             <i class="fa-solid fa-star text-amber-500"></i> Xem đánh giá & chi tiết
                                         </a>
                                     </div>
@@ -340,7 +415,7 @@
                 }
 
                 section.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-4 text-gray-900 border-l-4 border-orange-500 pl-3">${cat.name}</h2>
+                    <h2 class="text-2xl font-bold mb-4 text-gray-900 border-l-4 border-orange-500 pl-3">${escapeHtml(cat.name)}</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         ${dishesHTML}
                     </div>
@@ -350,14 +425,14 @@
 
             // 3. Render món nổi bật (lấy 4 món đầu tiên còn bán)
             const featured = allDishes.filter(d => d.is_available).slice(0, 4);
-            featuredContainer.innerHTML = featured.map(dish => `
+            featuredContainer.innerHTML = featured.length > 0 ? featured.map(dish => `
                 <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between">
                     <div>
-                        <img src="${dish.image_url || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSVycejT6fJNmFKlwbFC4y2VS3uSN-qGwDy8V9ytgblKQ&s=10'}" alt="${dish.name}" class="w-full h-36 object-cover">
+                        <img src="${escapeHtml(getSafeImageUrl(dish.image_url, 'https://via.placeholder.com/300x200?text=Mon+an'))}" alt="${escapeHtml(dish.name)}" class="w-full h-36 object-cover">
                         <div class="p-3">
-                            <h3 class="font-bold text-sm text-gray-800 line-clamp-1">${dish.name}</h3>
-                            <p class="text-xs text-gray-500 mt-1 line-clamp-1">${dish.description || ''}</p>
-                            <a href="dish-detail.html?id=${dish.id}" class="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold mt-1">
+                            <h3 class="font-bold text-sm text-gray-800 line-clamp-1">${escapeHtml(dish.name)}</h3>
+                            <p class="text-xs text-gray-500 mt-1 line-clamp-1">${escapeHtml(dish.description || '')}</p>
+                            <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold mt-1">
                                 <i class="fa-solid fa-star text-amber-500 text-[10px]"></i> Đánh giá
                             </a>
                         </div>
@@ -369,7 +444,7 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `).join('') : '<p class="text-sm text-gray-500">Chưa có món nổi bật.</p>';
         }
 
         function addToCart(dishId) {
