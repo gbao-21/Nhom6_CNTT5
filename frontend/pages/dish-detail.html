@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết món ăn & Đánh giá | KS25</title>
+  <link rel="icon" href="../assets/images/logo.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-root="../">
+  <header id="app-header"></header>
+
+  <main class="container">
+    <!-- Chọn hoặc nhập món -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <h2 style="margin:0;">Chi tiết món ăn & Đánh giá</h2>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label for="dish-select" style="margin:0;font-weight:600;">Chọn món:</label>
+          <select id="dish-select" style="padding:6px 12px;border:1px solid var(--color-border);border-radius:var(--radius);font:inherit;">
+            <option value="">-- Đang tải danh sách món --</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thông tin món ăn -->
+    <div id="dish-info-card" class="card" hidden>
+      <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+        <img id="dish-image" src="" alt="Ảnh món" style="width:200px;height:150px;object-fit:cover;border-radius:var(--radius);background:var(--color-bg);">
+        <div style="flex:1;min-width:260px;">
+          <h1 id="dish-name" style="margin:0 0 8px;font-size:1.6rem;"></h1>
+          <div style="font-size:1.3rem;font-weight:700;color:var(--color-primary);margin-bottom:8px;" id="dish-price"></div>
+          <p id="dish-description" class="muted" style="margin:0 0 12px;"></p>
+          <div id="dish-status-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Khu vực đánh giá -->
+    <div id="dish-reviews-card" class="card" hidden>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--color-border);padding-bottom:16px;margin-bottom:16px;flex-wrap:wrap;gap:16px;">
+        <div>
+          <h3 style="margin:0 0 4px;">Đánh giá của khách hàng</h3>
+          <div class="muted" style="font-size:13px;">Dựa trên phản hồi thực tế từ các đơn hàng hoàn tất</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="text-align:right;">
+            <div id="summary-avg-stars" style="color:#f59e0b;font-size:1.4rem;"></div>
+            <div id="summary-total-text" class="muted" style="font-size:13px;"></div>
+          </div>
+          <div id="summary-avg-number" style="font-size:2.4rem;font-weight:800;color:var(--color-primary);line-height:1;"></div>
+        </div>
+      </div>
+
+      <!-- Danh sách đánh giá -->
+      <div id="dish-reviews-list">
+        <p class="muted">Đang tải đánh giá...</p>
+      </div>
+    </div>
+  </main>
+
+  <footer id="app-footer"></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/pages/dish-detail.js"></script>
+</body>
+</html>
+

@@ -1,14 +1,17 @@
-"""CRUD và các hàm xử lý dữ liệu giỏ hàng (carts & cart_items)."""
+"""CRUD và các hàm xử lý dữ liệu giỏ hàng & tính tiền ở server (carts & cart_items)."""
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.crud.user import get_shipping_fee_by_area
 from app.models.cart import Cart, CartItem
-from app.models.dish import Dish
+from app.models.dish import Dish, DishOption
 from app.models.user import User
 from app.schemas.cart import CartItemCreate, CartItemUpdate, CartOption
+from app.services.promotion_service import calculate_discount
 
 
 def normalize_note(note: str | None) -> str | None:
@@ -25,37 +28,76 @@ def note_comparison_key(note: str | None) -> str | None:
     return normalized.casefold() if normalized is not None else None
 
 
-def normalize_selected_options(
+def extract_sorted_option_ids(
     options: list[CartOption] | list[dict[str, Any]] | None,
-) -> list[dict[str, int]]:
-    """Chuẩn hóa danh sách tùy chọn: khử trùng lặp và sắp xếp tăng dần theo option_id.
-
-    Nhờ đó [{"option_id": 2}, {"option_id": 1}] và [{"option_id": 1}, {"option_id": 2}]
-    được nhận diện là trùng hoàn toàn mà không cần tạo sẵn option trong DB.
-    """
+) -> list[int]:
+    """Trích xuất danh sách option_id đã khử trùng và sắp xếp tăng dần."""
     if not options:
         return []
-
     option_ids: set[int] = set()
     for opt in options:
         if isinstance(opt, CartOption):
             option_ids.add(opt.option_id)
         elif isinstance(opt, dict) and "option_id" in opt:
             option_ids.add(int(opt["option_id"]))
+    return sorted(option_ids)
 
-    return [{"option_id": oid} for oid in sorted(option_ids)]
+
+def normalize_selected_options(
+    options: list[CartOption] | list[dict[str, Any]] | None,
+    db: Session | None = None,
+) -> list[dict[str, Any]]:
+    """Chuẩn hóa danh sách tùy chọn: khử trùng lặp và sắp xếp tăng dần theo option_id.
+    Nếu có truyền name/price hoặc tìm thấy trong bảng dish_options thì lưu kèm để đối chiếu đổi giá.
+    """
+    if not options:
+        return []
+
+    by_id: dict[int, dict[str, Any]] = {}
+    for opt in options:
+        if isinstance(opt, CartOption):
+            oid = opt.option_id
+            raw_name = opt.name
+            raw_price = opt.price
+        elif isinstance(opt, dict) and "option_id" in opt:
+            oid = int(opt["option_id"])
+            raw_name = opt.get("name")
+            raw_price = opt.get("price", 0)
+        else:
+            continue
+
+        entry: dict[str, Any] = {"option_id": oid}
+        if db is not None:
+            db_opt = db.get(DishOption, oid)
+            if db_opt is not None:
+                entry["name"] = db_opt.name
+                entry["price"] = float(db_opt.price)
+            else:
+                if raw_name is not None:
+                    entry["name"] = raw_name
+                entry["price"] = float(raw_price or 0)
+        else:
+            if raw_name is not None:
+                entry["name"] = raw_name
+            if raw_price is not None:
+                entry["price"] = float(raw_price)
+
+        by_id[oid] = entry
+
+    return [by_id[oid] for oid in sorted(by_id.keys())]
 
 
 def is_same_cart_line(
     item: CartItem,
     dish_id: int,
-    normalized_options: list[dict[str, int]],
+    normalized_options: list[dict[str, Any]],
     normalized_note: str | None,
 ) -> bool:
     """Kiểm tra 1 dòng trong giỏ có trùng hoàn toàn (món + tùy chọn + ghi chú không phân biệt hoa/thường) hay không."""
     return (
         item.dish_id == dish_id
-        and normalize_selected_options(item.selected_options) == normalized_options
+        and extract_sorted_option_ids(item.selected_options)
+        == extract_sorted_option_ids(normalized_options)
         and note_comparison_key(item.note) == note_comparison_key(normalized_note)
     )
 
@@ -88,6 +130,173 @@ def validate_dish_available(db: Session, dish_id: int) -> Dish:
     return dish
 
 
+def enrich_cart_item(db: Session, item: CartItem) -> CartItem:
+    """Tính tiền từng dòng ở server (giá món + tùy chọn) và phát hiện món hết / đổi giá."""
+    dish = getattr(item, "dish", None) or db.get(Dish, item.dish_id)
+    item_warnings: list[str] = []
+    is_available = True
+    is_price_changed = False
+
+    if dish is None:
+        item.dish_name = f"Món ăn #{item.dish_id} (Không còn tồn tại)"
+        item.dish_image_url = None
+        current_dish_price = Decimal(str(item.dish_price_snapshot or 0))
+        old_price = float(current_dish_price)
+        is_available = False
+        item_warnings.append(f"Món ăn id={item.dish_id} không còn tồn tại trên hệ thống")
+    else:
+        item.dish_name = dish.name
+        item.dish_image_url = dish.image_url
+        current_dish_price = Decimal(str(dish.price or 0))
+
+        # Kiểm tra món hết hàng hoặc bị ẩn
+        dish_status = (getattr(dish, "status", "AVAILABLE") or "AVAILABLE").upper()
+        if not getattr(dish, "is_active", True) or dish_status in ("HIDDEN", "INACTIVE"):
+            is_available = False
+            item_warnings.append(f"Món '{dish.name}' hiện đang bị ẩn hoặc ngừng phục vụ")
+        elif not getattr(dish, "is_available", True) or dish_status in (
+            "OUT_OF_STOCK",
+            "UNAVAILABLE",
+            "SOLD_OUT",
+        ):
+            is_available = False
+            item_warnings.append(f"Món '{dish.name}' hiện đã hết hàng")
+
+        # Kiểm tra món đổi giá so với lúc thêm vào giỏ
+        if item.dish_price_snapshot is not None:
+            snapshot_price = Decimal(str(item.dish_price_snapshot))
+            old_price = float(snapshot_price)
+            if snapshot_price != current_dish_price:
+                is_price_changed = True
+                item_warnings.append(
+                    f"Món '{dish.name}' đã đổi giá từ {int(snapshot_price):,}đ thành {int(current_dish_price):,}đ"
+                )
+        else:
+            old_price = float(current_dish_price)
+
+    # Tính tiền tùy chọn (options_price) ở server
+    options_price = Decimal("0")
+    detailed_options: list[dict[str, Any]] = []
+    raw_options = item.selected_options or []
+
+    # Map lại giá cũ từng option (nếu có lưu trong JSON)
+    saved_opt_map: dict[int, dict[str, Any]] = {}
+    for raw in raw_options:
+        if isinstance(raw, dict) and "option_id" in raw:
+            saved_opt_map[int(raw["option_id"])] = raw
+        elif isinstance(raw, CartOption):
+            saved_opt_map[raw.option_id] = raw.model_dump()
+
+    for opt_id in sorted(saved_opt_map.keys()):
+        saved_opt = saved_opt_map[opt_id]
+        db_opt = db.get(DishOption, opt_id)
+        if db_opt is not None:
+            opt_price = Decimal(str(db_opt.price or 0))
+            opt_name = db_opt.name
+            if not getattr(db_opt, "is_available", True):
+                is_available = False
+                item_warnings.append(
+                    f"Tùy chọn '{opt_name}' của món '{item.dish_name}' hiện đã hết"
+                )
+            if "price" in saved_opt and saved_opt["price"] is not None:
+                saved_opt_price = Decimal(str(saved_opt["price"]))
+                if saved_opt_price != opt_price and saved_opt_price > 0:
+                    is_price_changed = True
+                    item_warnings.append(
+                        f"Tùy chọn '{opt_name}' đã đổi giá từ {int(saved_opt_price):,}đ thành {int(opt_price):,}đ"
+                    )
+        else:
+            opt_price = Decimal(str(saved_opt.get("price") or 0))
+            opt_name = saved_opt.get("name")
+
+        options_price += opt_price
+        detailed_options.append(
+            {
+                "option_id": opt_id,
+                "name": opt_name,
+                "price": float(opt_price),
+            }
+        )
+
+    unit_price = current_dish_price + options_price
+    line_total = unit_price * item.quantity
+
+    item.old_price = old_price
+    item.dish_price = float(current_dish_price)
+    item.options_price = float(options_price)
+    item.unit_price = float(unit_price)
+    item.selected_options = detailed_options
+    item.line_total = float(line_total)
+    item.is_available = is_available
+    item.is_price_changed = is_price_changed
+    item.warnings = item_warnings
+    return item
+
+
+def calculate_cart_summary(
+    db: Session,
+    cart: Cart,
+    delivery_area_id: int | None = None,
+    voucher_code: str | None = None,
+) -> Cart:
+    """Tính toán toàn bộ giỏ hàng ở server:
+    - Thành tiền từng dòng (giá món + tùy chọn) * số lượng
+    - Tạm tính (subtotal)
+    - Phí ship theo khu vực (hàm get_shipping_fee_by_area của module Tài khoản)
+    - Giảm giá (hàm calculate_discount của module Khuyến mãi)
+    - Tổng tiền (total_amount)
+    - Cảnh báo khi có món đã hết hoặc đổi giá
+    """
+    subtotal = Decimal("0")
+    total_qty = 0
+    has_unavailable = False
+    has_price_changes = False
+    all_warnings: list[str] = []
+
+    for item in cart.items:
+        enrich_cart_item(db, item)
+        subtotal += Decimal(str(item.line_total))
+        total_qty += item.quantity
+        if not item.is_available:
+            has_unavailable = True
+        if item.is_price_changed:
+            has_price_changes = True
+        for w in item.warnings:
+            if w not in all_warnings:
+                all_warnings.append(w)
+
+    # Tính phí ship theo khu vực (hàm của module Tài khoản)
+    shipping_fee = get_shipping_fee_by_area(
+        db,
+        delivery_area_id=delivery_area_id,
+        user_id=cart.user_id,
+    )
+
+    # Tính giảm giá (hàm của module Khuyến mãi)
+    discount_amount = calculate_discount(
+        db,
+        subtotal=subtotal,
+        shipping_fee=shipping_fee,
+        voucher_code=voucher_code,
+    )
+
+    total_amount = max(Decimal("0"), subtotal + shipping_fee - discount_amount)
+
+    cart.total_items = len(cart.items)
+    cart.total_quantity = total_qty
+    cart.subtotal = float(subtotal)
+    cart.delivery_area_id = delivery_area_id
+    cart.shipping_fee = float(shipping_fee)
+    cart.voucher_code = voucher_code.strip().upper() if (voucher_code and voucher_code.strip()) else None
+    cart.discount_amount = float(discount_amount)
+    cart.total_amount = float(total_amount)
+    cart.has_unavailable_items = has_unavailable
+    cart.has_price_changes = has_price_changes
+    cart.can_checkout = len(cart.items) > 0 and not has_unavailable
+    cart.warnings = all_warnings
+    return cart
+
+
 def ensure_user_exists(db: Session, user_id: int) -> None:
     """Đảm bảo user_id tồn tại trong bảng users trước khi tạo giỏ hàng."""
     user = db.get(User, user_id)
@@ -103,8 +312,13 @@ def ensure_user_exists(db: Session, user_id: int) -> None:
         )
 
 
-def get_or_create_cart_by_user(db: Session, user_id: int) -> Cart:
-    """Lấy giỏ hàng của user; nếu chưa có thì kiểm tra user và khởi tạo giỏ mới."""
+def get_or_create_cart_by_user(
+    db: Session,
+    user_id: int,
+    delivery_area_id: int | None = None,
+    voucher_code: str | None = None,
+) -> Cart:
+    """Lấy giỏ hàng của user kèm tính tiền ở server; nếu chưa có thì khởi tạo giỏ mới."""
     cart = db.scalar(select(Cart).where(Cart.user_id == user_id))
     if cart is None:
         ensure_user_exists(db, user_id)
@@ -112,7 +326,12 @@ def get_or_create_cart_by_user(db: Session, user_id: int) -> Cart:
         db.add(cart)
         db.commit()
         db.refresh(cart)
-    return cart
+    return calculate_cart_summary(
+        db,
+        cart,
+        delivery_area_id=delivery_area_id,
+        voucher_code=voucher_code,
+    )
 
 
 def get_cart_item(db: Session, cart_item_id: int) -> CartItem | None:
@@ -135,17 +354,24 @@ def add_item_to_user_cart(
 ) -> CartItem:
     """Thêm món vào giỏ của user hiện tại:
     - Chặn món hết/ẩn.
+    - Lưu snapshot giá món lúc thêm (dish_price_snapshot) để phát hiện đổi giá về sau.
     - Trùng hoàn toàn (cùng món + cùng tùy chọn + cùng ghi chú) -> cộng dồn số lượng.
     - Cùng món nhưng khác tùy chọn hoặc khác ghi chú -> tạo dòng riêng.
     """
-    normalized_options = normalize_selected_options(data.selected_options)
+    # 1. Chặn món hết / ẩn
+    dish = validate_dish_available(db, data.dish_id)
+
+    normalized_options = normalize_selected_options(data.selected_options, db=db)
     normalized_note = normalize_note(data.note)
 
-    # 1. Chặn món hết / ẩn
-    validate_dish_available(db, data.dish_id)
-
     # 2. Lấy giỏ hàng của chính mình
-    cart = get_or_create_cart_by_user(db, current_user_id)
+    cart = db.scalar(select(Cart).where(Cart.user_id == current_user_id))
+    if cart is None:
+        ensure_user_exists(db, current_user_id)
+        cart = Cart(user_id=current_user_id)
+        db.add(cart)
+        db.commit()
+        db.refresh(cart)
 
     # 3. Kiểm tra trùng hoàn toàn trong giỏ hàng -> cộng dồn
     for existing_item in cart.items:
@@ -158,14 +384,17 @@ def add_item_to_user_cart(
             existing_item.quantity += data.quantity
             existing_item.selected_options = normalized_options
             existing_item.note = normalized_note
+            if existing_item.dish_price_snapshot is None:
+                existing_item.dish_price_snapshot = dish.price
             db.commit()
             db.refresh(existing_item)
-            return existing_item
+            return enrich_cart_item(db, existing_item)
 
     # 4. Khác món hoặc khác tùy chọn / ghi chú -> thêm dòng riêng
     new_item = CartItem(
         cart_id=cart.id,
         dish_id=data.dish_id,
+        dish_price_snapshot=dish.price,
         selected_options=normalized_options,
         note=normalized_note,
         quantity=data.quantity,
@@ -173,7 +402,7 @@ def add_item_to_user_cart(
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
-    return new_item
+    return enrich_cart_item(db, new_item)
 
 
 def update_user_cart_item(
@@ -201,9 +430,9 @@ def update_user_cart_item(
 
     # 2. Xác định tùy chọn, ghi chú, số lượng mới
     if "selected_options" in fields_set and data.selected_options is not None:
-        target_options = normalize_selected_options(data.selected_options)
+        target_options = normalize_selected_options(data.selected_options, db=db)
     else:
-        target_options = normalize_selected_options(cart_item.selected_options)
+        target_options = normalize_selected_options(cart_item.selected_options, db=db)
 
     if "note" in fields_set:
         target_note = normalize_note(data.note)
@@ -232,7 +461,7 @@ def update_user_cart_item(
             db.delete(cart_item)
             db.commit()
             db.refresh(other_item)
-            return other_item
+            return enrich_cart_item(db, other_item)
 
     # 5. Cập nhật dòng hiện tại
     cart_item.selected_options = target_options
@@ -240,7 +469,7 @@ def update_user_cart_item(
     cart_item.quantity = target_quantity
     db.commit()
     db.refresh(cart_item)
-    return cart_item
+    return enrich_cart_item(db, cart_item)
 
 
 def delete_user_cart_item(

@@ -1,0 +1,25 @@
+/* Ẩn thanh cuộn ngang trên thanh danh mục mobile nhưng vẫn vuốt được */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Hiệu ứng món hết hàng hiện mờ */
+.dish-card.sold-out {
+    opacity: 0.52;
+    filter: grayscale(35%);
+}
+
+.dish-card.sold-out .btn-add-dish {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Mượt khi bấm danh mục cuộn tới vị trí tương ứng */
+html {
+    scroll-behavior: smooth;
+}

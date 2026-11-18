@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.order_status import VALID_STATUS_TRANSITIONS, is_valid_status_transition
+from app.crud import coupon as coupon_crud
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish, DishOption
 from app.models.order import Order, OrderItem, OrderStatusHistory
@@ -75,7 +76,15 @@ def create_order_for_user(db: Session, user_id: int, data: OrderCreate) -> Order
         )
 
     discount_amount = Decimal("0")
-    total_amount = subtotal + shipping_fee - discount_amount
+    coupon_applied = None
+    if data.coupon_code and data.coupon_code.strip():
+        coupon_applied, discount_amount = coupon_crud.validate_and_get_discount(
+            db=db,
+            code=data.coupon_code,
+            order_amount=subtotal,
+        )
+
+    total_amount = max(Decimal("0"), subtotal + shipping_fee - discount_amount)
 
     order = Order(
         order_code=generate_order_code(),
@@ -85,6 +94,7 @@ def create_order_for_user(db: Session, user_id: int, data: OrderCreate) -> Order
         delivery_address=data.delivery_address,
         delivery_area_id=area.id,
         shipping_fee=shipping_fee,
+        coupon_code=coupon_applied.code if coupon_applied else None,
         discount_amount=discount_amount,
         subtotal=subtotal,
         total_amount=total_amount,
@@ -95,6 +105,9 @@ def create_order_for_user(db: Session, user_id: int, data: OrderCreate) -> Order
     )
     db.add(order)
     db.flush()
+
+    if coupon_applied is not None:
+        coupon_crud.increment_used_count(db, coupon_applied)
 
     initial_history = OrderStatusHistory(
         order_id=order.id,
