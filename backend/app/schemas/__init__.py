@@ -28,6 +28,7 @@ from app.schemas.delivery_area import (
 from app.schemas.dish import (
     DishCreate,
     DishOptionCreate,
+    DishOptionUpdate,
     DishOptionResponse,
     DishResponse,
     DishUpdate,
@@ -74,6 +75,7 @@ __all__ = [
     "DishCreate",
     "DishOptionCreate",
     "DishOptionResponse",
+    "DishOptionUpdate",
     "DishResponse",
     "DishUpdate",
     "DeliveryAreaCreate",
