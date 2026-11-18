@@ -6,15 +6,22 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal, engine
 from app.models.category import Category
+from app.models.coupon import Coupon
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish
 from app.models.user import User
+from app.models.voucher import Voucher
 
 
 def ensure_schema_and_seed_data() -> None:
-    """Đảm bảo bảng dishes có đủ cột is_active/status và chèn dữ liệu mẫu nếu DB đang trống."""
+    """Đảm bảo các bảng có đủ cột còn thiếu và chèn dữ liệu mẫu nếu DB đang trống."""
     inspector = inspect(engine)
-    if "dishes" in inspector.get_table_names():
+    table_names = inspector.get_table_names()
+
+    """Đảm bảo bảng dishes / cart_items có đủ cột mới và chèn dữ liệu mẫu nếu DB đang trống."""
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    if "dishes" in table_names:
         existing_cols = {col["name"] for col in inspector.get_columns("dishes")}
         with engine.begin() as conn:
             if "is_active" not in existing_cols:
@@ -25,6 +32,22 @@ def ensure_schema_and_seed_data() -> None:
                 conn.execute(
                     text(
                         "ALTER TABLE dishes ADD COLUMN status VARCHAR(30) NOT NULL DEFAULT 'AVAILABLE'"
+                    )
+                )
+
+    if "orders" in table_names:
+        order_cols = {col["name"] for col in inspector.get_columns("orders")}
+        with engine.begin() as conn:
+            if "coupon_code" not in order_cols:
+                conn.execute(
+                    text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
+    if "cart_items" in table_names:
+        cart_item_cols = {col["name"] for col in inspector.get_columns("cart_items")}
+        with engine.begin() as conn:
+            if "dish_price_snapshot" not in cart_item_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE cart_items ADD COLUMN dish_price_snapshot DECIMAL(15, 2) NULL"
                     )
                 )
 
@@ -118,6 +141,49 @@ def ensure_schema_and_seed_data() -> None:
                     name="Quận Hà Đông",
                     shipping_fee=Decimal("15000"),
                     is_active=True,
+                )
+            )
+
+        # 5. Seed Coupons
+        if db.query(Coupon).filter(Coupon.code == "GIAM10K").first() is None:
+            db.add(
+                Coupon(
+                    code="GIAM10K",
+                    description="Giảm 10.000đ cho đơn từ 40.000đ",
+                    discount_type="FIXED",
+                    discount_value=Decimal("10000"),
+                    min_order_amount=Decimal("40000"),
+                    max_uses=10,
+                    used_count=0,
+                    status="ACTIVE",
+                )
+            )
+        if db.query(Coupon).filter(Coupon.code == "SALE10").first() is None:
+            db.add(
+                Coupon(
+                    code="SALE10",
+                    description="Giảm 10% cho mọi đơn hàng",
+                    discount_type="PERCENT",
+                    discount_value=Decimal("10"),
+                    min_order_amount=Decimal("0"),
+                    max_uses=50,
+                    used_count=0,
+                    status="ACTIVE",
+                )
+            )
+
+        # 6. Seed Voucher mẫu
+        if db.query(Voucher).filter(Voucher.code == "WELCOME50").first() is None:
+            db.add(
+                Voucher(
+                    code="WELCOME50",
+                    discount_type="PERCENT",
+                    discount_value=Decimal("20"),
+                    min_order_amount=Decimal("50000"),
+                    max_discount_amount=Decimal("30000"),
+                    max_uses=100,
+                    used_count=0,
+                    status="ACTIVE",
                 )
             )
         db.commit()
