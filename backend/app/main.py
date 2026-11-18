@@ -26,7 +26,8 @@ from app.routers import (
     reviews,
     users,
 )
-
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,7 +50,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+app.mount(
+    "/uploads",
+    StaticFiles(directory=UPLOAD_DIR),
+    name="uploads",
+)
 # CORS: cho phép trang FE (khác cổng/khác domain) gọi được API này
 app.add_middleware(
     CORSMiddleware,

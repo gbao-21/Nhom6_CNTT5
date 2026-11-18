@@ -11,5 +11,6 @@ __all__ = [
     "order",
     "coupon",
     "review",
+    "DishOptionUpdate",
 ]
 
