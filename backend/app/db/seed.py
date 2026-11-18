@@ -40,7 +40,7 @@ def ensure_schema_and_seed_data() -> None:
         with engine.begin() as conn:
             if "coupon_code" not in order_cols:
                 conn.execute(
-                    text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
+                    text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee"))
     if "cart_items" in table_names:
         cart_item_cols = {col["name"] for col in inspector.get_columns("cart_items")}
         with engine.begin() as conn:
