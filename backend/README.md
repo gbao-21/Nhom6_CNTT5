@@ -126,7 +126,8 @@ Kiểm tra:
 | GET | `/api/health` | Kiểm tra server + DB | |
 | GET | `/api/menu` hoặc `/api/menu/overview` | Lấy thực đơn theo danh mục | |
 | GET | `/api/menu/categories` | Danh mục đang hiển thị | |
-| GET | `/api/menu/items` hoặc `/api/menu/dishes` | Danh sách món; hỗ trợ `?category_id=1&q=mì` | |
+| GET | `/api/menu/items` | Danh sách dạng cũ; hỗ trợ `?category_id=1&q=mì` | |
+| GET | `/api/menu/dishes` | Lọc món theo `category_id`, `q` hoặc `search`; thêm `page` / `page_size` để nhận dữ liệu phân trang (`items`, `total`, `page`, `page_size`) | |
 | GET | `/api/menu/items/{dish_id}` hoặc `/api/menu/dishes/{dish_id}` | Chi tiết món và các tùy chọn | |
 | GET | `/api/items` | Danh sách, tìm theo tên `?q=com` | |
 | GET | `/api/items/{id}` | Chi tiết | |
