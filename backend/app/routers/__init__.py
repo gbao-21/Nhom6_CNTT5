@@ -6,6 +6,7 @@ from app.routers import (
     dishes,
     health,
     items,
+    menu,
     orders,
     users,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "users",
     "categories",
     "dishes",
+    "menu",
     "delivery_areas",
     "carts",
     "orders",

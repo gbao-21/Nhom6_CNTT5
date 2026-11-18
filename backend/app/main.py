@@ -20,6 +20,7 @@ from app.routers import (
     dishes,
     health,
     items,
+    menu,
     orders,
     users,
 )
@@ -57,6 +58,7 @@ app.include_router(items.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(dishes.router, prefix="/api")
+app.include_router(menu.router, prefix="/api")
 app.include_router(delivery_areas.router, prefix="/api")
 app.include_router(carts.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")
