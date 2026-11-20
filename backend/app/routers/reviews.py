@@ -1,7 +1,7 @@
 """API đánh giá: /api/reviews
 
 Phân quyền đơn giản:
-- POST /api/reviews              -> Khách (truyền user_id trong body)
+- POST /api/reviews              -> Khách (đơn hàng và user_id không bắt buộc)
 - GET  /api/reviews/dish/{id}   -> Public
 - GET  /api/reviews/order/{id}  -> Public
 - POST /api/reviews/{id}/reply  -> STAFF (role=STAFF qua query)
@@ -35,7 +35,12 @@ def require_admin(role: str = Query(default="ADMIN")):
 
 
 # ── Khách: Tạo đánh giá ──────────────────────────────────────────────────────
-@router.post("", response_model=ReviewResponse, status_code=201, summary="Tạo đánh giá món")
+@router.post(
+    "",
+    response_model=ReviewResponse,
+    status_code=201,
+    summary="Tạo đánh giá món (không bắt buộc đơn hàng)",
+)
 def create_review(data: ReviewCreate, db: Session = Depends(get_db)):
     return review_crud.create_review(db, data)
 

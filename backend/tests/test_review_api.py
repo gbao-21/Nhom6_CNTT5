@@ -1,5 +1,6 @@
-"""Unit test cho Task [Đánh giá] API đánh giá món sau khi nhận:
-- Khách có đơn Hoàn thành được chấm sao, nhận xét (và ảnh) từng món một lần;
+"""Unit test cho API đánh giá món:
+- Khách có thể đánh giá trực tiếp hoặc gắn với đơn đã hoàn thành;
+- Đánh giá theo đơn chỉ chấm từng món một lần;
 - Chặn khi đơn chưa hoàn thành;
 - Chặn đánh giá 2 lần cùng 1 món;
 - Điểm trung bình của món;
@@ -114,6 +115,22 @@ class TestReviewAPI(unittest.TestCase):
         self.assertEqual(review.content, "Mì ăn rất đậm đà, nóng hổi!")
         self.assertEqual(review.image_url, "https://example.com/mi.jpg")
         self.assertFalse(review.is_hidden)
+
+    def test_review_without_order_success(self):
+        """Khách có thể đánh giá món trực tiếp từ trang chi tiết."""
+        review = review_crud.create_review(
+            self.db,
+            ReviewCreate(
+                dish_id=1,
+                rating=4,
+                content="Món ngon, sẽ gọi lại.",
+            ),
+        )
+
+        self.assertIsNone(review.order_id)
+        self.assertIsNone(review.user_id)
+        self.assertEqual(review.rating, 4)
+        self.assertEqual(review.content, "Món ngon, sẽ gọi lại.")
 
     def test_review_blocked_when_order_not_completed(self):
         """Chặn đánh giá khi đơn chưa Hoàn thành."""

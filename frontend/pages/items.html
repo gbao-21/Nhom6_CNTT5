@@ -1,66 +1,324 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Items | KS25 Base</title>
-  <link rel="icon" href="../assets/images/logo.svg">
-  <link rel="stylesheet" href="../css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tìm kiếm & Bộ lọc - Bếp Việt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .suggestion-item:hover { background-color: #fff7ed; }
+    </style>
 </head>
-<body data-root="../">
-  <header id="app-header"></header>
+<body class="bg-gray-50 text-gray-800 antialiased">
 
-  <main class="container layout-2col">
-    <!-- Form thêm / sửa -->
-    <section class="card">
-      <h2 id="form-title">Thêm item mới</h2>
-      <form id="item-form">
-        <label for="name">Tên *</label>
-        <input id="name" name="name" type="text" required maxlength="255" placeholder="VD: Cơm rang">
-
-        <label for="price">Giá (VNĐ)</label>
-        <input id="price" name="price" type="number" min="0" step="1000" placeholder="0">
-
-        <label for="description">Mô tả</label>
-        <textarea id="description" name="description" rows="3" placeholder="Không bắt buộc"></textarea>
-
-        <div class="form-actions">
-          <button id="btn-submit" type="submit" class="btn btn-primary">Thêm</button>
-          <button id="btn-cancel" type="button" class="btn" hidden>Huỷ</button>
+    <!-- Header -->
+    <header class="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+            <a href="menu.html" class="flex items-center gap-2 text-xl font-extrabold text-orange-600">
+                <i class="fa-solid fa-bowl-food"></i>
+                <span>Bếp Việt</span>
+            </a>
+            <div class="flex items-center gap-3">
+                <a href="menu.html" class="text-sm font-semibold text-gray-600 hover:text-orange-600">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Quay lại Menu
+                </a>
+            </div>
         </div>
-      </form>
-    </section>
+    </header>
 
-    <!-- Danh sách -->
-    <section class="card">
-      <div class="list-header">
-        <h2>Danh sách items</h2>
-        <input id="search-input" type="search" placeholder="Tìm theo tên...">
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tên</th>
-              <th class="text-right">Giá</th>
-              <th>Ngày tạo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="item-table-body"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Tiêu đề & Ô tìm kiếm có Debounce + Gợi ý -->
+        <div class="mb-8 text-center max-w-2xl mx-auto relative">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-3">Tìm Kiếm Món Ăn Nhanh Chóng</h1>
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Nhập tên món ăn bạn muốn tìm (VD: Cơm, Phở, Gà)..." 
+                    autocomplete="off"
+                    class="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
+                >
+                <i class="fa-solid fa-search absolute left-4 top-4 text-gray-400 text-lg"></i>
+                
+                <!-- Khung hiển thị gợi ý khi gõ -->
+                <div id="suggestionsBox" class="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 hidden z-50 overflow-hidden text-left max-h-60 overflow-y-auto">
+                </div>
+            </div>
+        </div>
 
-  <footer id="app-footer"></footer>
+        <!-- Bộ lọc (Filters) & Sắp xếp (Sort) -->
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            
+            <!-- Lọc theo danh mục -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Danh mục</label>
+                <select id="categoryFilter" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="">Tất cả danh mục</option>
+                </select>
+            </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
-  <script src="../js/config.js"></script>
-  <script src="../js/api.js"></script>
-  <script src="../js/utils.js"></script>
-  <script src="../js/layout.js"></script>
-  <script src="../js/pages/items.js"></script>
+            <!-- Sắp xếp -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Sắp xếp theo</label>
+                <select id="sortBySelect" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="">Mặc định</option>
+                    <option value="price_asc">Giá: Thấp đến Cao</option>
+                    <option value="price_desc">Giá: Cao đến Thấp</option>
+                    <option value="bestseller">Bán chạy nhất</option>
+                    <option value="rating">Đánh giá cao nhất</option>
+                    <option value="newest">Mới nhất</option>
+                </select>
+            </div>
+
+            <!-- Khoảng giá -->
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Giá từ (đ)</label>
+                    <input type="number" id="minPriceInput" placeholder="0" min="0" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Đến giá (đ)</label>
+                    <input type="number" id="maxPriceInput" placeholder="500000" min="0" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+
+            <!-- Nút áp dụng / Reset -->
+            <div class="flex gap-2">
+                <button type="button" id="applyFilterBtn" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition shadow-sm">
+                    Lọc kết quả
+                </button>
+                <button type="button" id="resetFilterBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-600 py-2.5 px-3 rounded-xl text-sm transition" title="Đặt lại bộ lọc">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Kết quả dạng lưới (Grid Results) -->
+        <div id="resultsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Render kết quả động bằng JS -->
+        </div>
+
+        <!-- Trạng thái Rỗng (Empty State) / Lỗi (Error State) ẩn mặc định -->
+        <div id="stateMessageContainer" class="hidden text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm mt-4">
+            <div id="stateIcon" class="text-4xl text-orange-500 mb-3"><i class="fa-solid fa-bowl-food"></i></div>
+            <h3 id="stateTitle" class="text-lg font-bold text-gray-800 mb-1">Không tìm thấy món ăn phù hợp</h3>
+            <p id="stateDesc" class="text-sm text-gray-500">Hãy thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh bộ lọc giá.</p>
+        </div>
+
+    </main>
+
+    <!-- JavaScript xử lý Search, Debounce, Filter, Sort, Grid Render -->
+    <script>
+        const API_BASE = "http://127.0.0.1:8000/api";
+
+        const searchInput = document.getElementById("searchInput");
+        const suggestionsBox = document.getElementById("suggestionsBox");
+        const categoryFilter = document.getElementById("categoryFilter");
+        const sortBySelect = document.getElementById("sortBySelect");
+        const minPriceInput = document.getElementById("minPriceInput");
+        const maxPriceInput = document.getElementById("maxPriceInput");
+        const applyFilterBtn = document.getElementById("applyFilterBtn");
+        const resetFilterBtn = document.getElementById("resetFilterBtn");
+        const resultsContainer = document.getElementById("resultsContainer");
+        const stateMessageContainer = document.getElementById("stateMessageContainer");
+        const stateTitle = document.getElementById("stateTitle");
+        const stateDesc = document.getElementById("stateDesc");
+        const stateIcon = document.getElementById("stateIcon");
+
+        let debounceTimer = null;
+
+        // 1. Tải danh mục vào dropdown lọc
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${API_BASE}/menu/categories`);
+                if (res.ok) {
+                    const categories = await res.json();
+                    categories.forEach(cat => {
+                        const opt = document.createElement("option");
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        categoryFilter.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error("Không tải được danh mục:", err);
+            }
+        }
+
+        // 2. Gọi API tìm kiếm & lọc món ăn
+        async function fetchDishes() {
+            const query = searchInput.value.trim();
+            const catId = categoryFilter.value;
+            const sortBy = sortBySelect.value;
+            const minP = minPriceInput.value;
+            const maxP = maxPriceInput.value;
+
+            let url = `${API_BASE}/menu/dishes?is_available=true&page=1&page_size=50`;
+            if (query) url += `&search=${encodeURIComponent(query)}`;
+            if (catId) url += `&category_id=${catId}`;
+            if (sortBy) url += `&sort_by=${sortBy}`;
+            if (minP) url += `&min_price=${minP}`;
+            if (maxP) url += `&max_price=${maxP}`;
+
+            resultsContainer.innerHTML = '';
+            stateMessageContainer.classList.add("hidden");
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Lỗi kết nối máy chủ");
+                const data = await res.json();
+                const items = data.items || [];
+
+                renderDishesGrid(items);
+            } catch (err) {
+                showErrorState("Không thể kết nối đến máy chủ Backend (Cổng 8000). Hãy đảm bảo Uvicorn đang chạy.");
+            }
+        }
+
+        // 3. Hiển thị kết quả dạng lưới (Grid)
+        function renderDishesGrid(items) {
+            if (items.length === 0) {
+                showEmptyState("Không tìm thấy món ăn phù hợp", "Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc giá.");
+                return;
+            }
+
+            stateMessageContainer.classList.add("hidden");
+            resultsContainer.innerHTML = items.map(dish => {
+                const imgSrc = dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
+                const formattedPrice = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dish.price);
+
+                return `
+                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                        <div>
+                            <div class="aspect-[16/10] w-full overflow-hidden bg-gray-100">
+                                <img src="${imgSrc}" alt="${dish.name}" class="w-full h-full object-cover hover:scale-105 transition duration-300">
+                            </div>
+                            <div class="p-4">
+                                <div class="flex items-center justify-between text-xs text-orange-600 font-semibold mb-1">
+                                    <span><i class="fa-solid fa-fire mr-1"></i> Đã bán: ${dish.sold_count || 0}</span>
+                                    <span><i class="fa-solid fa-star text-amber-400 mr-1"></i> ${dish.rating || 5.0}</span>
+                                </div>
+                                <h3 class="font-bold text-base text-gray-900 line-clamp-1">${dish.name}</h3>
+                                <p class="text-xs text-gray-500 mt-1 line-clamp-2 min-h-[32px]">
+                                    ${dish.description || 'Món ăn hấp dẫn chế biến tươi ngon.'}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="p-4 pt-0 mt-2">
+                            <div class="flex items-center justify-between">
+                                <span class="font-extrabold text-orange-600 text-base">${formattedPrice}</span>
+                                <button onclick="alert('Đã thêm ${dish.name} vào giỏ hàng!')" class="w-9 h-9 rounded-full bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center shadow-sm transition">
+                                    <i class="fa-solid fa-plus text-sm"></i>
+                                </button>
+                            </div>
+                            <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-sm font-semibold text-orange-700 transition hover:border-orange-500 hover:bg-orange-100">
+                                <i class="fa-solid fa-star text-amber-500" aria-hidden="true"></i>
+                                Chi tiết món ăn & đánh giá
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 4. Gợi ý khi gõ (Debounce Search Suggestions)
+        searchInput.addEventListener("input", (e) => {
+            const keyword = e.target.value.trim();
+            clearTimeout(debounceTimer);
+
+            if (!keyword) {
+                suggestionsBox.classList.add("hidden");
+                fetchDishes(); // Tự động load lại danh sách khi ô tìm kiếm trống
+                return;
+            }
+
+            // Debounce 300ms gọi API tìm kiếm & gợi ý
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/menu/dishes?search=${encodeURIComponent(keyword)}&page_size=5`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const items = data.items || [];
+                        renderSuggestions(items);
+                    }
+                } catch (err) {
+                    console.error("Lỗi gợi ý:", err);
+                }
+                fetchDishes(); // Lọc luôn kết quả lớn bên dưới
+            }, 300);
+        });
+
+        function renderSuggestions(items) {
+            if (items.length === 0) {
+                suggestionsBox.classList.add("hidden");
+                return;
+            }
+
+            suggestionsBox.innerHTML = items.map(dish => `
+                <div onclick="selectSuggestion('${dish.name.replace(/'/g, "\\'")}')" class="suggestion-item px-4 py-3 cursor-pointer border-b border-gray-50 flex items-center gap-3 transition">
+                    <img src="${dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80'}" class="w-10 h-10 rounded-lg object-cover">
+                    <div>
+                        <p class="font-semibold text-sm text-gray-800">${dish.name}</p>
+                        <p class="text-xs text-orange-600 font-bold">${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dish.price)}</p>
+                    </div>
+                </div>
+            `).join('');
+            suggestionsBox.classList.remove("hidden");
+        }
+
+        function selectSuggestion(name) {
+            searchInput.value = name;
+            suggestionsBox.classList.add("hidden");
+            fetchDishes();
+        }
+
+        // Đóng hộp gợi ý khi click ra ngoài
+        document.addEventListener("click", (e) => {
+            if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.classList.add("hidden");
+            }
+        });
+
+        // 5. Trạng thái Rỗng / Lỗi
+        function showEmptyState(title, desc) {
+            stateIcon.innerHTML = '<i class="fa-solid fa-face-frown text-orange-400"></i>';
+            stateTitle.textContent = title;
+            stateDesc.textContent = desc;
+            resultsContainer.innerHTML = '';
+            stateMessageContainer.classList.remove("hidden");
+        }
+
+        function showErrorState(desc) {
+            stateIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-500"></i>';
+            stateTitle.textContent = "Đã xảy ra lỗi kết nối";
+            stateDesc.textContent = desc;
+            resultsContainer.innerHTML = '';
+            stateMessageContainer.classList.remove("hidden");
+        }
+
+        // Sự kiện bộ lọc
+        applyFilterBtn.addEventListener("click", fetchDishes);
+        categoryFilter.addEventListener("change", fetchDishes);
+        sortBySelect.addEventListener("change", fetchDishes);
+
+        resetFilterBtn.addEventListener("click", () => {
+            searchInput.value = "";
+            categoryFilter.value = "";
+            sortBySelect.value = "";
+            minPriceInput.value = "";
+            maxPriceInput.value = "";
+            suggestionsBox.classList.add("hidden");
+            fetchDishes();
+        });
+
+        // Khởi chạy khi tải trang
+        document.addEventListener("DOMContentLoaded", () => {
+            loadCategories();
+            fetchDishes();
+        });
+    </script>
 </body>
 </html>
