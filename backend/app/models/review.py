@@ -1,4 +1,4 @@
-"""Model bảng reviews (đánh giá món ăn theo đơn hàng)."""
+"""Model bảng reviews (đánh giá món ăn, có thể gắn với đơn hàng)."""
 from sqlalchemy import (
     Boolean,
     Column,
@@ -20,8 +20,8 @@ class Review(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Đơn hàng và người đánh giá
-    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    # Đơn hàng không bắt buộc khi đánh giá trực tiếp từ trang chi tiết món
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Món được đánh giá

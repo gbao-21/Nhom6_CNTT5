@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models.dish import Dish
 from app.models.order import Order
 from app.models.review import Review
 from app.schemas.review import ReviewCreate, ReviewReplyRequest
@@ -14,26 +15,28 @@ def create_review(db: Session, data: ReviewCreate) -> Review:
     """Tạo đánh giá mới.
 
     Business rules:
-    - Đơn hàng phải ở trạng thái COMPLETED
-    - Mỗi dish trong 1 đơn chỉ được đánh giá 1 lần
-    - user_id phải là chủ đơn hàng
+    - Đánh giá không gắn đơn được tạo trực tiếp từ trang chi tiết món
+    - Nếu có order_id, đơn phải COMPLETED, thuộc user và món chỉ được đánh giá 1 lần
     """
-    order = db.query(Order).filter(Order.id == data.order_id).first()
-    if order is None:
-        raise HTTPException(status_code=404, detail=f"Không tìm thấy đơn hàng id={data.order_id}")
-    if order.status != "COMPLETED":
-        raise HTTPException(status_code=400, detail="Chỉ có thể đánh giá đơn hàng đã hoàn thành")
-    if order.user_id != data.user_id:
-        raise HTTPException(status_code=403, detail="Bạn không có quyền đánh giá đơn hàng này")
+    if db.get(Dish, data.dish_id) is None:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy món ăn id={data.dish_id}")
 
-    # Kiểm tra đã đánh giá món này trong đơn chưa
-    existing = (
-        db.query(Review)
-        .filter(Review.order_id == data.order_id, Review.dish_id == data.dish_id)
-        .first()
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Món này trong đơn hàng đã được đánh giá trước đó")
+    if data.order_id is not None:
+        order = db.query(Order).filter(Order.id == data.order_id).first()
+        if order is None:
+            raise HTTPException(status_code=404, detail=f"Không tìm thấy đơn hàng id={data.order_id}")
+        if order.status != "COMPLETED":
+            raise HTTPException(status_code=400, detail="Chỉ có thể đánh giá đơn hàng đã hoàn thành")
+        if order.user_id != data.user_id:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền đánh giá đơn hàng này")
+
+        existing = (
+            db.query(Review)
+            .filter(Review.order_id == data.order_id, Review.dish_id == data.dish_id)
+            .first()
+        )
+        if existing:
+            raise HTTPException(status_code=400, detail="Món này trong đơn hàng đã được đánh giá trước đó")
 
     review = Review(
         order_id=data.order_id,
