@@ -67,4 +67,11 @@ const api = {
   put: (path, body, params) => http.put(path, body, { params }).then((res) => res.data),
   patch: (path, body, params) => http.patch(path, body, { params }).then((res) => res.data),
   delete: (path, params) => http.delete(path, { params }).then((res) => res.data),
+  // Upload file ảnh
+    upload: (path, formData) => http.post(path, formData, {
+        headers: {
+            "Content-Type": "multipart/form-data"
+        }
+    }).then((res) => res.data)
 };
+
