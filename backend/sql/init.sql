@@ -153,7 +153,7 @@ INSERT IGNORE INTO categories (id, name, description, is_active) VALUES
 
 INSERT IGNORE INTO dishes (id, category_id, name, description, price, is_available, is_active, status) VALUES
   (1, 1, 'Mì trộn Indomie đặc biệt', 'Mì trộn kèm trứng lòng đào và xúc xích', 45000, 1, 1, 'AVAILABLE'),
-  (2, 1, 'Cơm gà xối mỡ (Hết hàng)', 'Món dùng để test chặn món hết hàng', 55000, 0, 1, 'OUT_OF_STOCK'),
+  (2, 1, 'Cơm gà xối mỡ', 'Cơm ăn kèm gà chiên giòn', 55000, 1, 1, 'AVAILABLE'),
   (3, 1, 'Cháo sườn sụn (Món ẩn)', 'Món dùng để test chặn món bị ẩn', 35000, 1, 0, 'HIDDEN');
 
 INSERT IGNORE INTO dish_options (id, dish_id, name, price, is_available) VALUES
@@ -308,7 +308,7 @@ CREATE TABLE IF NOT EXISTS vouchers (
 -- 11. Bảng đánh giá món ăn (reviews)
 CREATE TABLE IF NOT EXISTS reviews (
   id          INT AUTO_INCREMENT PRIMARY KEY,
-  order_id    INT NOT NULL,
+  order_id    INT NULL,
   dish_id     INT NULL,
   user_id     INT NULL,
   rating      SMALLINT NOT NULL,

@@ -33,6 +33,8 @@
         </div>
     </header>
 
+    <div id="cartToast" class="fixed bottom-5 right-5 z-[100] hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg" role="status" aria-live="polite"></div>
+
     <!-- Banner -->
     <section class="bg-gradient-to-r from-orange-500 to-amber-600 text-white py-12 px-4 text-center">
         <div class="max-w-3xl mx-auto">
@@ -86,7 +88,7 @@
             <summary class="cursor-pointer font-bold text-gray-900">
                 <i class="fa-solid fa-image mr-2 text-orange-500"></i>Thêm ảnh món ăn
             </summary>
-            <form id="dishImageForm" class="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <form id="dishImageForm" class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
                 <div>
                     <label for="imageDishSelect" class="mb-1 block text-sm font-semibold text-gray-700">Món ăn</label>
                     <select id="imageDishSelect" required class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
@@ -96,6 +98,10 @@
                 <div>
                     <label for="dishImageUrl" class="mb-1 block text-sm font-semibold text-gray-700">URL ảnh</label>
                     <input id="dishImageUrl" type="url" maxlength="500" placeholder="https://example.com/mon-an.jpg" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+                </div>
+                <div>
+                    <label for="dishImageFile" class="mb-1 block text-sm font-semibold text-gray-700">Hoặc tải ảnh lên</label>
+                    <input id="dishImageFile" type="file" accept="image/jpeg,image/png,image/webp" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
                 </div>
                 <button id="saveDishImageButton" type="submit" disabled class="rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
                     Lưu ảnh
@@ -142,6 +148,7 @@
         const menuSearchInput = document.getElementById('searchInput');
         const imageDishSelect = document.getElementById('imageDishSelect');
         const dishImageUrl = document.getElementById('dishImageUrl');
+        const dishImageFile = document.getElementById('dishImageFile');
         const dishImagePreview = document.getElementById('dishImagePreview');
         const dishImagePreviewMessage = document.getElementById('dishImagePreviewMessage');
         const dishImageStatus = document.getElementById('dishImageStatus');
@@ -152,6 +159,7 @@
         let activeDishCategoriesAvailable = false;
         let menuCategories = [];
         let editableDishes = [];
+        let dishImageObjectUrl = null;
 
         async function fetchMenuOverview() {
             let categories;
@@ -245,7 +253,7 @@
                 editableDishes = await response.json();
                 imageDishSelect.replaceChildren(new Option('Chọn món ăn', ''));
                 editableDishes.forEach((dish) => {
-                    imageDishSelect.add(new Option(dish.name, String(dish.id)));
+                    imageDishSelect.add(new Option(`${dish.name} (#${dish.id})`, String(dish.id)));
                 });
                 imageDishSelect.disabled = editableDishes.length === 0;
                 saveDishImageButton.disabled = true;
@@ -267,6 +275,13 @@
             dishImageStatus.className = `mt-2 text-sm ${isError ? 'text-red-600' : 'text-green-700'}`;
         }
 
+        function resolveDishImageUrl(imageUrl) {
+            if (!imageUrl) return '';
+            return imageUrl.startsWith('/uploads/')
+                ? `${API_BASE.replace(/\/api\/?$/, '')}${imageUrl}`
+                : imageUrl;
+        }
+
         function setDishImagePreview(url) {
             dishImagePreview.classList.add('hidden');
             dishImagePreviewMessage.classList.add('hidden');
@@ -282,7 +297,7 @@
 
             let parsedImageUrl;
             try {
-                parsedImageUrl = new URL(url);
+                parsedImageUrl = new URL(resolveDishImageUrl(url), window.location.href);
             } catch {
                 dishImagePreviewMessage.textContent = 'Vui lòng nhập URL ảnh hợp lệ.';
                 dishImagePreviewMessage.classList.remove('hidden');
@@ -302,19 +317,60 @@
                 dishImagePreviewMessage.classList.add('hidden');
                 dishImagePreview.classList.remove('hidden');
             };
-            dishImagePreview.src = url;
+            dishImagePreview.src = parsedImageUrl.href;
+        }
+
+        function releaseDishImageObjectUrl() {
+            if (dishImageObjectUrl) {
+                URL.revokeObjectURL(dishImageObjectUrl);
+                dishImageObjectUrl = null;
+            }
         }
 
         imageDishSelect.addEventListener('change', () => {
             const dish = editableDishes.find((item) => String(item.id) === imageDishSelect.value);
-            dishImageUrl.value = dish?.image_url || '';
+            releaseDishImageObjectUrl();
+            dishImageFile.value = '';
+            dishImageUrl.value = resolveDishImageUrl(dish?.image_url);
             setDishImagePreview(dishImageUrl.value);
             saveDishImageButton.disabled = !dish;
             setDishImageStatus('');
         });
 
         dishImageUrl.addEventListener('input', () => {
+            releaseDishImageObjectUrl();
+            dishImageFile.value = '';
             setDishImagePreview(dishImageUrl.value.trim());
+            saveDishImageButton.disabled = !imageDishSelect.value;
+        });
+
+        dishImageFile.addEventListener('change', () => {
+            const file = dishImageFile.files[0];
+            if (!file) return;
+
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+                dishImageFile.value = '';
+                saveDishImageButton.disabled = true;
+                setDishImageStatus('Chọn ảnh JPG, PNG hoặc WEBP có dung lượng tối đa 5MB.', true);
+                return;
+            }
+
+            releaseDishImageObjectUrl();
+            dishImageUrl.value = '';
+            dishImageObjectUrl = URL.createObjectURL(file);
+            dishImagePreview.onerror = () => {
+                dishImagePreviewMessage.textContent = 'Không thể xem trước ảnh đã chọn.';
+                dishImagePreviewMessage.classList.remove('hidden');
+            };
+            dishImagePreview.onload = () => {
+                dishImagePreviewMessage.classList.add('hidden');
+                dishImagePreview.classList.remove('hidden');
+            };
+            dishImagePreview.src = dishImageObjectUrl;
+            dishImagePreview.classList.remove('hidden');
+            dishImagePreviewMessage.classList.add('hidden');
+            saveDishImageButton.disabled = !imageDishSelect.value;
+            setDishImageStatus('Ảnh đã sẵn sàng để tải lên.');
         });
 
         document.getElementById('dishImageForm').addEventListener('submit', async (event) => {
@@ -323,7 +379,8 @@
 
             const dishId = imageDishSelect.value;
             const imageUrl = dishImageUrl.value.trim();
-            if (imageUrl) {
+            const imageFile = dishImageFile.files[0];
+            if (!imageFile && imageUrl) {
                 let parsedImageUrl;
                 try {
                     parsedImageUrl = new URL(imageUrl);
@@ -340,11 +397,22 @@
             saveDishImageButton.disabled = true;
             setDishImageStatus('Đang lưu ảnh...');
             try {
-                const response = await fetch(`${API_BASE}/dishes/${encodeURIComponent(dishId)}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: imageUrl || null }),
-                });
+                let requestOptions;
+                let endpoint;
+                if (imageFile) {
+                    const formData = new FormData();
+                    formData.append('file', imageFile);
+                    requestOptions = { method: 'POST', body: formData };
+                    endpoint = `${API_BASE}/dishes/${encodeURIComponent(dishId)}/image`;
+                } else {
+                    requestOptions = {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_url: imageUrl || null }),
+                    };
+                    endpoint = `${API_BASE}/dishes/${encodeURIComponent(dishId)}`;
+                }
+                const response = await fetch(endpoint, requestOptions);
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
                     throw new Error(getApiErrorMessage(data, response.status));
@@ -352,6 +420,9 @@
 
                 const dishIndex = editableDishes.findIndex((dish) => dish.id === data.id);
                 if (dishIndex !== -1) editableDishes[dishIndex] = data;
+                releaseDishImageObjectUrl();
+                dishImageFile.value = '';
+                dishImageUrl.value = resolveDishImageUrl(data.image_url);
                 setDishImagePreview(data.image_url || '');
                 setDishImageStatus('Đã lưu ảnh món ăn.');
                 await fetchMenuOverview();
@@ -477,7 +548,7 @@
             if (typeof value !== 'string' || !value.trim()) return fallback;
 
             try {
-                const url = new URL(value, window.location.origin);
+                const url = new URL(resolveDishImageUrl(value), window.location.origin);
                 return ['http:', 'https:'].includes(url.protocol) ? url.href : fallback;
             } catch {
                 return fallback;
@@ -560,14 +631,14 @@
                                     <div class="p-4">
                                         <h3 class="font-bold text-base text-gray-800 line-clamp-1">${escapeHtml(dish.name)}</h3>
                                         <p class="text-xs text-gray-500 mt-1 line-clamp-2">${escapeHtml(dish.description || 'Chưa có mô tả')}</p>
-                                        <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold mt-2">
-                                            <i class="fa-solid fa-star text-amber-500"></i> Xem đánh giá & chi tiết
+                                        <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:border-orange-500 hover:bg-orange-100 mt-3">
+                                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Chi tiết món ăn
                                         </a>
                                     </div>
                                 </div>
                                 <div class="p-4 pt-0 flex items-center justify-between mt-2">
                                     <span class="font-bold text-orange-600 text-base">${formatPrice(dish.price)}</span>
-                                    <button onclick="addToCart(${dish.id})" class="bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-orange-700 transition shadow">
+                                    <button type="button" onclick="addToCart(${Number(dish.id)}, this)" data-dish-name="${escapeHtml(dish.name)}" aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng" class="bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-orange-700 transition shadow">
                                         <i class="fa-solid fa-plus"></i>
                                     </button>
                                 </div>
@@ -596,14 +667,14 @@
                         <div class="p-3">
                             <h3 class="font-bold text-sm text-gray-800 line-clamp-1">${escapeHtml(dish.name)}</h3>
                             <p class="text-xs text-gray-500 mt-1 line-clamp-1">${escapeHtml(dish.description || '')}</p>
-                            <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold mt-1">
-                                <i class="fa-solid fa-star text-amber-500 text-[10px]"></i> Đánh giá
+                            <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:border-orange-500 hover:bg-orange-100 mt-2">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Chi tiết món ăn
                             </a>
                         </div>
                     </div>
                     <div class="p-3 pt-0 flex items-center justify-between">
                         <span class="font-bold text-orange-600 text-sm">${formatPrice(dish.price)}</span>
-                        <button onclick="addToCart(${dish.id})" class="bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-orange-700 transition">
+                        <button type="button" onclick="addToCart(${Number(dish.id)}, this)" data-dish-name="${escapeHtml(dish.name)}" aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng" class="bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-orange-700 transition">
                             <i class="fa-solid fa-plus text-xs"></i>
                         </button>
                     </div>
@@ -611,9 +682,58 @@
             `).join('') : '<p class="text-sm text-gray-500">Chưa có món nổi bật.</p>';
         }
 
-        function addToCart(dishId) {
-            alert(`Đã thêm món có ID: ${dishId} vào giỏ hàng!`);
-            // Logic gọi API thêm giỏ hàng /api/carts/items ở đây
+        let cartToastTimer;
+
+        function showCartToast(message, isError = false) {
+            const toast = document.getElementById('cartToast');
+            toast.textContent = message;
+            toast.setAttribute('role', isError ? 'alert' : 'status');
+            toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+            toast.classList.remove('hidden', 'bg-green-600', 'bg-red-600');
+            toast.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+            clearTimeout(cartToastTimer);
+            cartToastTimer = setTimeout(() => toast.classList.add('hidden'), 3200);
+        }
+
+        async function addToCart(dishId, button) {
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.classList.add('opacity-60', 'cursor-wait');
+
+            try {
+                const response = await fetch(`${API_BASE}/carts/items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dish_id: Number(dishId),
+                        selected_options: [],
+                        quantity: 1,
+                    }),
+                });
+                const data = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(data
+                        ? getApiErrorMessage(data, response.status)
+                        : `Backend trả về lỗi HTTP ${response.status}`);
+                }
+
+                const cartBadge = document.getElementById('cartBadge');
+                if (cartBadge) {
+                    cartBadge.textContent = String(Number(cartBadge.textContent || 0) + 1);
+                }
+                showCartToast(`Đã thêm "${button.dataset.dishName}" vào giỏ hàng.`);
+            } catch (error) {
+                showCartToast(
+                    error instanceof TypeError
+                        ? 'Không kết nối được backend. Vui lòng thử lại sau.'
+                        : error.message,
+                    true,
+                );
+            } finally {
+                button.disabled = false;
+                button.classList.remove('opacity-60', 'cursor-wait');
+                button.innerHTML = originalContent;
+            }
         }
 
         // Khởi chạy khi tải trang
