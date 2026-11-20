@@ -49,6 +49,12 @@ def ensure_schema_and_seed_data() -> None:
                 conn.execute(
                     text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
                 )
+    if "reviews" in table_names and engine.dialect.name == "mysql":
+        review_cols = inspector.get_columns("reviews")
+        order_id_col = next((col for col in review_cols if col["name"] == "order_id"), None)
+        if order_id_col is not None and not order_id_col["nullable"]:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE reviews MODIFY COLUMN order_id INT NULL"))
     if "cart_items" in table_names:
         cart_item_cols = {col["name"] for col in inspector.get_columns("cart_items")}
         with engine.begin() as conn:
@@ -115,20 +121,26 @@ def ensure_schema_and_seed_data() -> None:
                     status="AVAILABLE",
                 )
             )
-        if db.get(Dish, 2) is None:
+        seed_dish = db.get(Dish, 2)
+        if seed_dish is None:
             db.add(
                 Dish(
                     id=2,
                     category_id=1,
-                    name="Cơm gà xối mỡ (Hết hàng)",
-                    description="Món dùng để test chặn món hết hàng",
+                    name="Cơm gà xối mỡ",
+                    description="Cơm ăn kèm gà chiên giòn",
                     price=Decimal("55000"),
                     image_url=SEED_DISH_IMAGES[2],
-                    is_available=False,
+                    is_available=True,
                     is_active=True,
-                    status="OUT_OF_STOCK",
+                    status="AVAILABLE",
                 )
             )
+        elif seed_dish.name == "Cơm gà xối mỡ (Hết hàng)" and seed_dish.status == "OUT_OF_STOCK":
+            seed_dish.name = "Cơm gà xối mỡ"
+            seed_dish.description = "Cơm ăn kèm gà chiên giòn"
+            seed_dish.is_available = True
+            seed_dish.status = "AVAILABLE"
         if db.get(Dish, 3) is None:
             db.add(
                 Dish(

@@ -6,9 +6,9 @@ from pydantic import BaseModel, Field
 
 
 class ReviewCreate(BaseModel):
-    order_id: int
+    order_id: Optional[int] = None
     dish_id: int
-    user_id: int
+    user_id: Optional[int] = None
     rating: int = Field(..., ge=1, le=5)
     content: Optional[str] = None
     image_url: Optional[str] = None
@@ -24,7 +24,7 @@ class ReviewHideRequest(BaseModel):
 
 class ReviewResponse(BaseModel):
     id: int
-    order_id: int
+    order_id: Optional[int] = None
     dish_id: Optional[int] = None
     user_id: Optional[int] = None
     user_name: Optional[str] = None
