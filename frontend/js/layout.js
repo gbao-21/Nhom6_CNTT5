@@ -14,6 +14,8 @@ const MENU = [
   { href: "pages/admin-coupons.html", label: "Quản lý mã giảm giá" },
   { href: "pages/admin-reviews.html", label: "Quản lý đánh giá" },
   { href: "pages/items.html", label: "Items (CRUD mẫu)" },
+  { href: "pages/chat.html", label: "Chat (Khách)" },
+  { href: "pages/staff-chat.html", label: "Chat (Nhân viên)" },
 ];
 
 function renderLayout() {

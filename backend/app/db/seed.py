@@ -23,10 +23,6 @@ SEED_DISH_IMAGES = {
 def ensure_schema_and_seed_data() -> None:
     """Đảm bảo các bảng có đủ cột còn thiếu và chèn dữ liệu mẫu nếu DB đang trống."""
     inspector = inspect(engine)
-    table_names = inspector.get_table_names()
-
-    """Đảm bảo bảng dishes / cart_items có đủ cột mới và chèn dữ liệu mẫu nếu DB đang trống."""
-    inspector = inspect(engine)
     table_names = set(inspector.get_table_names())
     if "dishes" in table_names:
         existing_cols = {col["name"] for col in inspector.get_columns("dishes")}
@@ -42,28 +38,23 @@ def ensure_schema_and_seed_data() -> None:
                     )
                 )
 
-    if "orders" in table_names:
-        order_cols = {col["name"] for col in inspector.get_columns("orders")}
-        with engine.begin() as conn:
-            if "coupon_code" not in order_cols:
-                conn.execute(
-                    text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
-                )
-    if "reviews" in table_names and engine.dialect.name == "mysql":
-        review_cols = inspector.get_columns("reviews")
-        order_id_col = next((col for col in review_cols if col["name"] == "order_id"), None)
-        if order_id_col is not None and not order_id_col["nullable"]:
+        if "orders" in table_names:
+            order_cols = {col["name"] for col in inspector.get_columns("orders")}
             with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE reviews MODIFY COLUMN order_id INT NULL"))
-    if "cart_items" in table_names:
-        cart_item_cols = {col["name"] for col in inspector.get_columns("cart_items")}
-        with engine.begin() as conn:
-            if "dish_price_snapshot" not in cart_item_cols:
-                conn.execute(
-                    text(
-                        "ALTER TABLE cart_items ADD COLUMN dish_price_snapshot DECIMAL(15, 2) NULL"
+                if "coupon_code" not in order_cols:
+                    conn.execute(
+                        text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL AFTER shipping_fee")
                     )
-                )
+
+        if "cart_items" in table_names:
+            cart_item_cols = {col["name"] for col in inspector.get_columns("cart_items")}
+            with engine.begin() as conn:
+                    if "dish_price_snapshot" not in cart_item_cols:
+                        conn.execute(
+                            text(
+                            "ALTER TABLE cart_items ADD COLUMN dish_price_snapshot DECIMAL(15, 2) NULL"
+                            )
+                    )
 
     db: Session = SessionLocal()
     try:
