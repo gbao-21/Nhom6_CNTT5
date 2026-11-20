@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat nhân viên | Food Night</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm flex-shrink-0">
+    <div class="max-w-full px-4 py-3 flex justify-between items-center">
+      <span class="text-xl font-bold text-orange-600 flex items-center gap-2">
+        <i class="fa-solid fa-headset"></i> Trang chat nhân viên
+      </span>
+      <span class="text-sm text-gray-500">Nhân viên ID = 2 (demo)</span>
+    </div>
+  </header>
+
+  <!-- Nội dung chính: 2 cột -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Cột trái: danh sách khách -->
+    <aside class="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+      <div class="px-4 py-3 border-b border-gray-200 font-semibold text-sm text-gray-600 uppercase tracking-wide">
+        Khách hàng
+      </div>
+      <div id="conversation-list" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+        <p class="text-sm text-gray-400 px-4 py-6 text-center">Đang tải...</p>
+      </div>
+    </aside>
+
+    <!-- Cột phải: hội thoại -->
+    <section class="flex-1 flex flex-col overflow-hidden bg-gray-50">
+
+      <!-- Header hội thoại -->
+      <div id="chat-header" class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-2 flex-shrink-0">
+        <i class="fa-solid fa-user-circle text-gray-400 text-2xl"></i>
+        <span id="chat-title" class="font-semibold text-gray-700">Chọn một khách để xem hội thoại</span>
+      </div>
+
+      <!-- Tin nhắn -->
+      <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-4 space-y-2 text-sm"></div>
+
+      <!-- Ô nhập -->
+      <div id="reply-box" class="flex items-center gap-2 px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0 hidden">
+        <input id="reply-input" type="text" placeholder="Nhập tin nhắn trả lời..."
+          class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+        <button id="btn-send-reply"
+          class="bg-orange-500 hover:bg-orange-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition flex-shrink-0">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000/api";
+    const STAFF_ID = 2;  // Demo: nhân viên có id=2
+
+    let selectedCustomerId = null;
+    let lastMessageId = 0;
+
+    const convList = document.getElementById("conversation-list");
+    const msgList = document.getElementById("chat-messages");
+    const chatTitle = document.getElementById("chat-title");
+    const replyBox = document.getElementById("reply-box");
+    const replyInput = document.getElementById("reply-input");
+    const btnSend = document.getElementById("btn-send-reply");
+
+    // ── Danh sách cuộc trò chuyện ───────────────────────────────────────────
+    async function loadConversations() {
+      try {
+        const res = await fetch(`${API_BASE}/chat/conversations`);
+        if (!res.ok) return;
+        const list = await res.json();
+        renderConversationList(list);
+      } catch (err) {
+        console.error("Lỗi tải danh sách chat:", err);
+      }
+    }
+
+    function renderConversationList(list) {
+      if (list.length === 0) {
+        convList.innerHTML = `<p class="text-sm text-gray-400 px-4 py-6 text-center">Chưa có cuộc trò chuyện nào.</p>`;
+        return;
+      }
+      convList.innerHTML = list.map(conv => `
+        <div class="conv-item flex items-center justify-between gap-2 px-4 py-3 cursor-pointer hover:bg-orange-50 transition ${conv.customer_id === selectedCustomerId ? "bg-orange-50 border-l-4 border-orange-500" : ""}"
+          data-cid="${conv.customer_id}" onclick="selectConversation(${conv.customer_id})">
+          <div class="flex items-center gap-3 overflow-hidden">
+            <i class="fa-solid fa-user-circle text-gray-400 text-2xl flex-shrink-0"></i>
+            <div class="overflow-hidden">
+              <div class="font-semibold text-sm text-gray-800">Khách #${conv.customer_id}</div>
+              <div class="text-xs text-gray-500 truncate max-w-[140px]">${escHtml(conv.last_content)}</div>
+            </div>
+          </div>
+          ${conv.unread_count > 0
+            ? `<span class="bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">${conv.unread_count > 9 ? "9+" : conv.unread_count}</span>`
+            : ""}
+        </div>`).join("");
+    }
+
+    // ── Chọn hội thoại ──────────────────────────────────────────────────────
+    async function selectConversation(customerId) {
+      selectedCustomerId = customerId;
+      lastMessageId = 0;
+      chatTitle.textContent = `Khách #${customerId}`;
+      replyBox.classList.remove("hidden");
+      msgList.innerHTML = "";
+      await loadMessages();
+      await markRead(customerId);
+      await loadConversations();  // cập nhật lại badge
+    }
+
+    // ── Lấy tin nhắn ────────────────────────────────────────────────────────
+    async function loadMessages() {
+      if (!selectedCustomerId) return;
+      try {
+        const url = lastMessageId > 0
+          ? `${API_BASE}/chat/messages/${selectedCustomerId}?since=${lastMessageId}`
+          : `${API_BASE}/chat/messages/${selectedCustomerId}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const msgs = await res.json();
+        if (msgs.length === 0) return;
+
+        msgs.forEach(appendMessage);
+        lastMessageId = msgs[msgs.length - 1].id;
+        scrollToBottom();
+      } catch (err) {
+        console.error("Lỗi tải tin nhắn:", err);
+      }
+    }
+
+    // ── Đánh dấu đã đọc ─────────────────────────────────────────────────────
+    async function markRead(customerId) {
+      try {
+        await fetch(`${API_BASE}/chat/messages/${customerId}/read?reader_id=${STAFF_ID}`, {
+          method: "PATCH",
+        });
+      } catch (_) {}
+    }
+
+    // ── Gửi tin trả lời ─────────────────────────────────────────────────────
+    btnSend.addEventListener("click", sendReply);
+    replyInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendReply();
+    });
+
+    async function sendReply() {
+      if (!selectedCustomerId) return;
+      const content = replyInput.value.trim();
+      if (!content) return;
+      replyInput.value = "";
+      replyInput.disabled = true;
+      btnSend.disabled = true;
+
+      try {
+        await fetch(`${API_BASE}/chat/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customer_id: selectedCustomerId, sender_id: STAFF_ID, content }),
+        });
+        await loadMessages();
+      } catch (err) {
+        console.error("Lỗi gửi:", err);
+      } finally {
+        replyInput.disabled = false;
+        btnSend.disabled = false;
+        replyInput.focus();
+      }
+    }
+
+    // ── Render 1 tin nhắn ───────────────────────────────────────────────────
+    function appendMessage(msg) {
+      const isStaff = msg.sender_id === STAFF_ID;
+      const div = document.createElement("div");
+      div.className = `flex ${isStaff ? "justify-end" : "justify-start"}`;
+      div.innerHTML = `
+        <div class="max-w-[70%] px-3 py-2 rounded-2xl text-sm shadow-sm leading-snug
+          ${isStaff ? "bg-orange-500 text-white rounded-br-sm" : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm"}">
+          ${escHtml(msg.content)}
+          <div class="text-[10px] mt-1 ${isStaff ? "text-orange-100 text-right" : "text-gray-400"}">
+            ${isStaff ? "Nhân viên · " : "Khách · "}${formatTime(msg.sent_at)}
+          </div>
+        </div>`;
+      msgList.appendChild(div);
+    }
+
+    function scrollToBottom() {
+      msgList.scrollTop = msgList.scrollHeight;
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function formatTime(isoStr) {
+      const d = new Date(isoStr);
+      return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // ── Polling 3 giây: cập nhật danh sách và tin mới trong hội thoại đang mở ──
+    setInterval(async () => {
+      await loadConversations();
+      if (selectedCustomerId) {
+        await loadMessages();
+      }
+    }, 3000);
+
+    // Khởi tạo
+    loadConversations();
+  </script>
+</body>
+</html>
+
