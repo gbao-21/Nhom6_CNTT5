@@ -31,6 +31,31 @@ let quantity = 1;
 let detailRequestId = 0;
 let unavailableRequiredGroup = false;
 
+const RECENT_DISHES_KEY = "recentDishes";
+const MAX_RECENT_DISHES = 6;
+
+function saveRecentlyViewedDish(dish) {
+  let recent = [];
+  try {
+    recent = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || "[]");
+  } catch {
+    recent = [];
+  }
+  if (!Array.isArray(recent)) recent = [];
+
+  const item = {
+    id: Number(dish.id),
+    name: dish.name,
+    price: Number(dish.price) || 0,
+    image_url: dish.image_url || "",
+  };
+  recent = [item, ...recent.filter((entry) => Number(entry.id) !== item.id)].slice(
+    0,
+    MAX_RECENT_DISHES,
+  );
+  localStorage.setItem(RECENT_DISHES_KEY, JSON.stringify(recent));
+}
+
 function starsHtml(rating) {
   const rounded = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
   return "★".repeat(rounded) + "☆".repeat(5 - rounded);
@@ -109,6 +134,7 @@ async function loadDishDetail(dishId) {
     if (requestId !== detailRequestId) return;
 
     currentDish = dish;
+    saveRecentlyViewedDish(dish);
     quantity = 1;
     dishQuantity.textContent = quantity;
     dishNote.value = "";
