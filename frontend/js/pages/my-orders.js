@@ -9,6 +9,8 @@ const orderInfo = document.getElementById("order-info");
 const orderStatusInfo = document.getElementById("order-status-info");
 const reviewsSection = document.getElementById("reviews-section");
 const dishReviewsList = document.getElementById("dish-reviews-list");
+const reorderButton = document.getElementById("reorder-button");
+const completedOrdersList = document.getElementById("completed-orders-list");
 
 // Dùng user_id mặc định = 1 (chưa có auth)
 const DEFAULT_USER_ID = 1;
@@ -30,6 +32,104 @@ function starInputHtml(dishId) {
 }
 
 let selectedRatings = {}; // { dishId: rating }
+let currentOrderItems = [];
+
+async function reorderItems(items, button) {
+  if (!Array.isArray(items) || items.length === 0) {
+    showToast("Đơn hàng không có món để đặt lại.", "error");
+    return;
+  }
+
+  if (button) button.disabled = true;
+  let addedCount = 0;
+  let unavailableCount = 0;
+
+  try {
+    for (const item of items) {
+      if (!item.dish_id) {
+        unavailableCount += 1;
+        continue;
+      }
+      try {
+        await api.post("/carts/items", {
+          dish_id: item.dish_id,
+          selected_options: (item.selected_options || []).map((option) => ({
+            option_id: option.option_id,
+            name: option.name,
+            price: Number(option.price) || 0,
+          })),
+          note: item.note || null,
+          quantity: Number(item.quantity) || 1,
+        });
+        addedCount += 1;
+      } catch {
+        unavailableCount += 1;
+      }
+    }
+
+    if (addedCount > 0) {
+      showToast(
+        unavailableCount > 0
+          ? `Đã thêm ${addedCount} món; ${unavailableCount} món không còn khả dụng.`
+          : `Đã đặt lại ${addedCount} món vào giỏ hàng.`,
+      );
+    } else {
+      showToast("Không thể đặt lại món. Món có thể đã hết hàng.", "error");
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function loadCompletedOrders() {
+  try {
+    const orders = await api.get("/orders/my-orders", {
+      user_id: DEFAULT_USER_ID,
+      status: "COMPLETED",
+    });
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+      completedOrdersList.innerHTML = `<p class="muted">Chưa có đơn hàng nào hoàn thành.</p>`;
+      return;
+    }
+
+    completedOrdersList.innerHTML = orders.map((order) => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      const itemNames = items
+        .map((item) => escapeHtml(item.dish_name || `Món #${item.dish_id}`))
+        .join(", ");
+
+      return `
+        <article style="border:1px solid var(--color-border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+            <div>
+              <strong>Đơn hàng #${Number(order.id)}</strong>
+              <p class="muted" style="margin:4px 0 0;">
+                ${itemNames || "Không có thông tin món"}
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary reorder-order-button"
+              data-order-id="${Number(order.id)}"
+              ${items.length === 0 ? "disabled" : ""}>
+              <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+              Đặt lại
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    completedOrdersList.querySelectorAll(".reorder-order-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        const order = orders.find((entry) => Number(entry.id) === Number(button.dataset.orderId));
+        reorderItems(order?.items || [], button);
+      });
+    });
+  } catch (error) {
+    completedOrdersList.innerHTML =
+      `<p class="text-error">${escapeHtml(error.message)}</p>`;
+  }
+}
 
 function highlightStars(dishId, upTo) {
   [1, 2, 3, 4, 5].forEach((n) => {
@@ -61,11 +161,15 @@ async function loadOrder() {
 
   orderInfo.hidden = true;
   reviewsSection.hidden = true;
+  reorderButton.hidden = true;
+  currentOrderItems = [];
   selectedRatings = {};
 
   try {
     // Lấy danh sách đánh giá của đơn (backend trả về cả order_status và items)
     const data = await api.get(`/reviews/order/${orderId}`);
+    const order = await api.get(`/orders/my-orders/${orderId}?user_id=${DEFAULT_USER_ID}`);
+    currentOrderItems = Array.isArray(order.items) ? order.items : [];
     // data: { order_id, order_status, reviews: [...] }
     // Mỗi review: { id, dish_id, dish_name, rating, content, image_url, created_at }
 
@@ -74,7 +178,12 @@ async function loadOrder() {
 
     orderInfo.hidden = false;
     reviewsSection.hidden = false;
+    reorderButton.hidden =
+      data.order_status !== "COMPLETED" || currentOrderItems.length === 0;
+    reorderButton.disabled = false;
   } catch (error) {
+    currentOrderItems = [];
+    reorderButton.hidden = true;
     showToast(error.message, "error");
     orderInfo.hidden = false;
     orderStatusInfo.innerHTML = `<p class="text-error">${escapeHtml(error.message)}</p>`;
@@ -153,6 +262,11 @@ function renderNewReviewForm(orderId, dishId, dishName) {
     </form>`;
 }
 
+// ---------- Đặt lại đơn hàng ----------
+reorderButton.addEventListener("click", async () => {
+  await reorderItems(currentOrderItems, reorderButton);
+});
+
 // ---------- Submit đánh giá ----------
 dishReviewsList.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -194,4 +308,6 @@ dishReviewsList.addEventListener("submit", async (event) => {
     submitBtn.disabled = false;
   }
 });
+
+loadCompletedOrders();
 
