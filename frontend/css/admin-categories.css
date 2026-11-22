@@ -1,0 +1,73 @@
+
+/* Bảng danh mục */
+#category-table-body tr {
+    border-bottom: 1px solid #f1f1f1;
+}
+
+#category-table-body tr:hover {
+    background-color: #fafafa;
+}
+
+#category-table-body td {
+    vertical-align: middle;
+}
+
+/* Nhãn trạng thái */
+.category-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.category-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.category-hidden {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+/* Nút sắp xếp */
+.sort-button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #4b5563;
+}
+
+.sort-button:hover:not(:disabled) {
+    background: #fff7ed;
+    color: #ea580c;
+    border-color: #fdba74;
+}
+
+.sort-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Popup */
+#category-modal {
+    backdrop-filter: blur(3px);
+}
+
+#category-modal:not(.hidden) > div {
+    animation: categoryPopupShow 0.2s ease;
+}
+
+@keyframes categoryPopupShow {
+    from {
+        opacity: 0;
+        transform: translateY(15px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

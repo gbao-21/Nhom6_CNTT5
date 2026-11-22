@@ -73,6 +73,7 @@
     background: white;
 }
 
+
 @media (max-width: 640px) {
     .option-row {
         grid-template-columns: 1fr 1fr;
