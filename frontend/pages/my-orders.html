@@ -6,6 +6,7 @@
   <title>Đơn của tôi | KS25</title>
   <link rel="icon" href="../assets/images/logo.svg">
   <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/my-orders.css">
 </head>
 <body data-root="../">
   <header id="app-header"></header>
@@ -13,6 +14,7 @@
   <main class="container">
     <div class="card">
       <h2 style="margin-bottom:12px;">Đơn hàng đã hoàn thành</h2>
+      <div id="reorder-status" class="reorder-status" role="status" aria-live="polite" hidden></div>
       <div id="completed-orders-list">
         <p class="muted">Đang tải đơn hàng...</p>
       </div>

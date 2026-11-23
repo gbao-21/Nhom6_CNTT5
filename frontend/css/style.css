@@ -118,3 +118,15 @@ th { font-size: 13px; color: var(--color-muted); text-transform: uppercase; }
 }
 .toast-success { background: var(--color-success); }
 .toast-error { background: var(--color-danger); }
+
+@media (max-width: 640px) {
+  .header-inner { flex-wrap: wrap; gap: 4px 12px; padding-top: 8px; padding-bottom: 8px; }
+  .nav { flex-basis: 100%; padding-bottom: 4px; }
+  main.container { padding-top: 16px; padding-bottom: 16px; }
+  .card { padding: 16px; }
+  .toast { right: 12px; bottom: 12px; left: 12px; max-width: none; }
+}
+
+@media (max-width: 360px) {
+  .container { padding-right: 12px; padding-left: 12px; }
+}

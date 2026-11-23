@@ -11,11 +11,11 @@
 
   <!-- Header -->
   <header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-x-3 gap-y-1">
       <a href="menu.html" class="text-2xl font-bold text-orange-600 flex items-center gap-2">
         <i class="fa-solid fa-utensils"></i> Bếp Việt
       </a>
-      <span class="text-sm text-gray-500">Trang khách hàng (demo: user ID = 1)</span>
+      <span class="text-xs sm:text-sm text-gray-500">Trang khách hàng (demo: user ID = 1)</span>
     </div>
   </header>
 
@@ -36,8 +36,8 @@
 
   <!-- Khung chat -->
   <div id="chat-box"
-    class="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden hidden"
-    style="height: 420px;">
+    class="fixed bottom-24 right-4 z-50 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden hidden"
+    style="height: min(420px, calc(100vh - 8rem)); height: min(420px, calc(100dvh - 8rem));">
 
     <!-- Header khung chat -->
     <div class="bg-orange-500 text-white px-4 py-3 flex justify-between items-center flex-shrink-0">

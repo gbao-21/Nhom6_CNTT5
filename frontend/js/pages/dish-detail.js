@@ -35,25 +35,24 @@ const RECENT_DISHES_KEY = "recentDishes";
 const MAX_RECENT_DISHES = 6;
 
 function saveRecentlyViewedDish(dish) {
-  let recent = [];
   try {
-    recent = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || "[]");
-  } catch {
-    recent = [];
+    const stored = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || "[]");
+    const recent = Array.isArray(stored) ? stored : [];
+    const item = {
+      id: Number(dish.id),
+      name: dish.name,
+      price: Number(dish.price) || 0,
+      image_url: dish.image_url || "",
+    };
+    const updated = [
+      item,
+      ...recent.filter((entry) => entry && Number(entry.id) !== item.id),
+    ]
+      .slice(0, MAX_RECENT_DISHES);
+    localStorage.setItem(RECENT_DISHES_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.warn("Không thể lưu lịch sử món đã xem:", error);
   }
-  if (!Array.isArray(recent)) recent = [];
-
-  const item = {
-    id: Number(dish.id),
-    name: dish.name,
-    price: Number(dish.price) || 0,
-    image_url: dish.image_url || "",
-  };
-  recent = [item, ...recent.filter((entry) => Number(entry.id) !== item.id)].slice(
-    0,
-    MAX_RECENT_DISHES,
-  );
-  localStorage.setItem(RECENT_DISHES_KEY, JSON.stringify(recent));
 }
 
 function starsHtml(rating) {

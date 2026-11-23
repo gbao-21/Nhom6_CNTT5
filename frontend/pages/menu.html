@@ -45,17 +45,17 @@
 
     <!-- Món đã xem gần đây -->
     <section id="recentDishesSection" class="max-w-7xl mx-auto px-4 pt-8">
-        <div class="mb-4 flex items-center justify-between gap-3">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 class="flex items-center gap-2 text-xl font-bold text-gray-900 md:text-2xl">
                 <i class="fa-solid fa-clock-rotate-left text-orange-500" aria-hidden="true"></i>
                 Món đã xem gần đây
             </h2>
-            <button id="clearRecentDishes" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-red-600">
+            <button id="clearRecentDishes" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-red-600" hidden>
                 <i class="fa-solid fa-xmark mr-1" aria-hidden="true"></i>
-                Đặt lại
+                Xóa lịch sử
             </button>
         </div>
-        <div id="recentDishesContainer" class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
+        <div id="recentDishesContainer" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         </div>
     </section>
 
@@ -98,8 +98,8 @@
 
     <!-- Khung chat popup -->
     <div id="chat-box"
-        class="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden hidden"
-        style="height: 420px;">
+        class="fixed bottom-24 right-4 z-50 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden hidden"
+        style="height: min(420px, calc(100vh - 8rem)); height: min(420px, calc(100dvh - 8rem));">
         <div class="bg-orange-500 text-white px-4 py-3 flex justify-between items-center flex-shrink-0">
             <span class="font-semibold text-sm">💬 Chat với cửa hàng</span>
             <button id="btn-close-chat" class="text-white hover:text-orange-200 text-lg leading-none">
@@ -340,16 +340,18 @@
         function getRecentDishes() {
             try {
                 const data = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || '[]');
-                return Array.isArray(data) ? data : [];
+                return Array.isArray(data)
+                    ? data.filter(dish => dish && Number.isInteger(Number(dish.id)) && Number(dish.id) > 0)
+                    : [];
             } catch {
                 return [];
             }
         }
 
         function renderRecentDishes() {
-            const section = document.getElementById('recentDishesSection');
             const container = document.getElementById('recentDishesContainer');
             const recent = getRecentDishes();
+            document.getElementById('clearRecentDishes').hidden = recent.length === 0;
 
             if (recent.length === 0) {
                 container.innerHTML = `
@@ -360,7 +362,6 @@
                 return;
             }
 
-            section.classList.remove('hidden');
             container.innerHTML = recent.map(dish => {
                 const imageUrl = getSafeImageUrl(
                     dish.image_url,
@@ -369,21 +370,42 @@
                 return `
                     <article class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
                         <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="block">
-                            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" class="h-36 w-full object-cover">
+                            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" loading="lazy" class="h-36 w-full object-cover">
                             <div class="p-3">
                                 <h3 class="line-clamp-1 font-bold text-sm text-gray-800">${escapeHtml(dish.name)}</h3>
                                 <p class="mt-1 font-bold text-sm text-orange-600">${formatPrice(dish.price)}</p>
                             </div>
                         </a>
+                        <div class="flex items-center justify-between gap-2 px-3 pb-3">
+                            <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="min-h-10 inline-flex items-center text-xs font-semibold text-orange-700 hover:text-orange-800">
+                                Xem chi tiết
+                            </a>
+                            <button type="button" data-recent-add="${Number(dish.id)}" data-dish-name="${escapeHtml(dish.name)}"
+                                aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng"
+                                class="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-700 disabled:cursor-wait disabled:opacity-60">
+                                <i class="fa-solid fa-cart-plus" aria-hidden="true"></i>
+                                Thêm vào giỏ
+                            </button>
+                        </div>
                     </article>
                 `;
             }).join('');
         }
 
         document.getElementById('clearRecentDishes').addEventListener('click', () => {
-            localStorage.removeItem(RECENT_DISHES_KEY);
-            renderRecentDishes();
-            showCartToast('Đã đặt lại danh sách món đã xem.');
+            try {
+                localStorage.removeItem(RECENT_DISHES_KEY);
+                renderRecentDishes();
+                showCartToast('Đã xóa danh sách món đã xem.');
+            } catch (error) {
+                showCartToast('Không thể xóa lịch sử món đã xem.', true);
+            }
+        });
+
+        document.getElementById('recentDishesContainer').addEventListener('click', event => {
+            const button = event.target.closest('button[data-recent-add]');
+            if (!button) return;
+            addToCart(Number(button.dataset.recentAdd), button);
         });
 
         function rememberDishBeforeViewing(dishId) {
@@ -392,22 +414,24 @@
                 .find((item) => Number(item.id) === Number(dishId));
             if (!dish) return;
 
-            let recent = [];
             try {
                 const stored = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || '[]');
-                if (Array.isArray(stored)) recent = stored;
-            } catch {
-                recent = [];
+                const recent = Array.isArray(stored) ? stored : [];
+                const item = {
+                    id: Number(dish.id),
+                    name: dish.name,
+                    price: Number(dish.price) || 0,
+                    image_url: dish.image_url || '',
+                };
+                const updated = [
+                    item,
+                    ...recent.filter((entry) => entry && Number(entry.id) !== item.id),
+                ]
+                    .slice(0, 6);
+                localStorage.setItem(RECENT_DISHES_KEY, JSON.stringify(updated));
+            } catch (error) {
+                console.warn('Không thể lưu lịch sử món đã xem:', error);
             }
-
-            const item = {
-                id: Number(dish.id),
-                name: dish.name,
-                price: Number(dish.price) || 0,
-                image_url: dish.image_url || '',
-            };
-            recent = [item, ...recent.filter((entry) => Number(entry.id) !== item.id)].slice(0, 6);
-            localStorage.setItem(RECENT_DISHES_KEY, JSON.stringify(recent));
         }
 
         function escapeHtml(value) {
