@@ -18,6 +18,7 @@ from app.models.dish import Dish, DishOption
 from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.models.user import User
 from app.schemas.order import OrderCreate, OrderItemCreate, OrderOptionCreate
+from app.services.promotion_service import calculate_discount
 
 # Khóa đồng bộ theo user_id và bộ nhớ tạm lưu idempotency_key / chữ ký đơn hàng để chống bấm đặt 2 lần
 _GLOBAL_LOCK = threading.Lock()
@@ -302,7 +303,12 @@ def create_order_for_user(
             order_items.append(order_item)
 
         shipping_fee = Decimal(str(area.shipping_fee or 0))
-        discount_amount = Decimal("0")
+        discount_amount = calculate_discount(
+            db,
+            subtotal=subtotal,
+            shipping_fee=shipping_fee,
+            voucher_code=data.voucher_code,
+        )
         total_amount = max(Decimal("0"), subtotal + shipping_fee - discount_amount)
 
         # 5. Chống bấm đặt 2 lần (kiểm tra idempotency_key và đơn trùng vừa tạo)

@@ -5,7 +5,9 @@ from fastapi import HTTPException, status
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-# Một số mã khuyến mãi có sẵn để phục vụ kiểm thử khi bảng vouchers chưa có dữ liệu
+from app.crud import coupon as coupon_crud
+
+# Một số mã khuyến mãi có sẵn để phục vụ kiểm thử khi bảng coupons/vouchers chưa có mã đó
 BUILTIN_VOUCHERS: dict[str, dict] = {
     "GIAM10": {
         "type": "PERCENT",
@@ -40,11 +42,18 @@ def calculate_discount(
 
     code = voucher_code.strip().upper()
 
-    # 1. Nếu trong DB đã có bảng vouchers / promotions của module Khuyến mãi thì ưu tiên đọc từ DB
     bind = db.get_bind()
     inspector = inspect(bind)
     table_names = set(inspector.get_table_names())
 
+    # 1. Kiểm tra trong bảng coupons (nếu mã tồn tại trong bảng coupons)
+    if "coupons" in table_names:
+        coupon_obj = coupon_crud.get_coupon_by_code(db, code)
+        if coupon_obj is not None:
+            _, discount_amt = coupon_crud.validate_and_get_discount(db, code, subtotal)
+            return min(Decimal(str(discount_amt)), subtotal + shipping_fee)
+
+    # 2. Kiểm tra trong bảng vouchers (nếu có)
     if "vouchers" in table_names:
         row = db.execute(
             text("SELECT * FROM vouchers WHERE UPPER(code) = :code LIMIT 1"),
@@ -73,7 +82,7 @@ def calculate_discount(
                 discount = min(discount, Decimal(str(max_disc)))
             return min(discount, subtotal + shipping_fee)
 
-    # 2. Kiểm tra trong danh sách mã khuyến mãi mẫu
+    # 3. Kiểm tra trong danh sách mã khuyến mãi mẫu (GIAM10, GIAM20K, FREESHIP)
     voucher = BUILTIN_VOUCHERS.get(code)
     if voucher is None:
         raise HTTPException(
@@ -100,4 +109,3 @@ def calculate_discount(
         discount = min(discount, voucher["max_discount"])
 
     return min(discount, subtotal + shipping_fee)
-
