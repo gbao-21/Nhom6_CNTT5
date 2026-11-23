@@ -9,6 +9,7 @@
 const MENU = [
   { href: "index.html", label: "Trang chủ" },
   { href: "pages/menu.html", label: "Thực đơn" },
+  { href: "pages/favorites.html", label: "Yêu thích" },
   { href: "pages/dish-detail.html", label: "Chi tiết món & Đánh giá" },
   { href: "pages/my-orders.html", label: "Đơn của tôi" },
   { href: "pages/admin-coupons.html", label: "Quản lý mã giảm giá" },

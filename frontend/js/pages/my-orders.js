@@ -11,6 +11,7 @@ const reviewsSection = document.getElementById("reviews-section");
 const dishReviewsList = document.getElementById("dish-reviews-list");
 const reorderButton = document.getElementById("reorder-button");
 const completedOrdersList = document.getElementById("completed-orders-list");
+const reorderStatus = document.getElementById("reorder-status");
 
 // Dùng user_id mặc định = 1 (chưa có auth)
 const DEFAULT_USER_ID = 1;
@@ -40,44 +41,74 @@ async function reorderItems(items, button) {
     return;
   }
 
-  if (button) button.disabled = true;
-  let addedCount = 0;
-  let unavailableCount = 0;
+  const originalButtonContent = button?.innerHTML;
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Đang thêm vào giỏ...";
+  }
+  setReorderStatus("Đang thêm các món của đơn hàng vào giỏ...", false);
 
   try {
+    const results = [];
     for (const item of items) {
-      if (!item.dish_id) {
-        unavailableCount += 1;
+      if (!Number.isInteger(Number(item.dish_id)) || Number(item.dish_id) < 1) {
+        results.push({ added: false, error: "Một món không còn thông tin để đặt lại." });
         continue;
       }
+
       try {
         await api.post("/carts/items", {
-          dish_id: item.dish_id,
+          dish_id: Number(item.dish_id),
           selected_options: (item.selected_options || []).map((option) => ({
-            option_id: option.option_id,
+            option_id: Number(option.option_id),
             name: option.name,
             price: Number(option.price) || 0,
           })),
           note: item.note || null,
-          quantity: Number(item.quantity) || 1,
+          quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
         });
-        addedCount += 1;
-      } catch {
-        unavailableCount += 1;
+        results.push({ added: true });
+      } catch (error) {
+        results.push({ added: false, error: error.message });
       }
     }
 
-    if (addedCount > 0) {
-      showToast(
-        unavailableCount > 0
-          ? `Đã thêm ${addedCount} món; ${unavailableCount} món không còn khả dụng.`
-          : `Đã đặt lại ${addedCount} món vào giỏ hàng.`,
-      );
+    const addedCount = results.filter((result) => result.added).length;
+    const failedResults = results.filter((result) => !result.added);
+    if (failedResults.length === 0) {
+      const message = `Đã thêm ${addedCount} món vào giỏ hàng.`;
+      setReorderStatus(message, false, true);
+      showToast(message);
+    } else if (addedCount > 0) {
+      const message = `Đã thêm ${addedCount}/${items.length} món. ${failedResults.length} món chưa thêm được: ${failedResults[0].error}`;
+      setReorderStatus(message, true, addedCount > 0);
+      showToast(message, "error");
     } else {
-      showToast("Không thể đặt lại món. Món có thể đã hết hàng.", "error");
+      const message = `Không thể đặt lại món: ${failedResults[0].error}`;
+      setReorderStatus(message, true);
+      showToast(message, "error");
     }
   } finally {
-    if (button) button.disabled = false;
+    if (button) {
+      button.innerHTML = originalButtonContent;
+      button.disabled = false;
+    }
+  }
+}
+
+function setReorderStatus(message, isError, showCartLink = false) {
+  reorderStatus.replaceChildren();
+  reorderStatus.hidden = false;
+  reorderStatus.classList.toggle("is-error", isError);
+  const messageElement = document.createElement("span");
+  messageElement.textContent = message;
+  reorderStatus.appendChild(messageElement);
+
+  if (showCartLink) {
+    const cartLink = document.createElement("a");
+    cartLink.href = "cart.html";
+    cartLink.textContent = "Mở giỏ hàng";
+    reorderStatus.appendChild(cartLink);
   }
 }
 
@@ -100,11 +131,11 @@ async function loadCompletedOrders() {
         .join(", ");
 
       return `
-        <article style="border:1px solid var(--color-border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-            <div>
+        <article class="completed-order">
+          <div class="completed-order-heading">
+            <div class="completed-order-copy">
               <strong>Đơn hàng #${Number(order.id)}</strong>
-              <p class="muted" style="margin:4px 0 0;">
+              <p class="muted completed-order-items">
                 ${itemNames || "Không có thông tin món"}
               </p>
             </div>

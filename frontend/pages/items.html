@@ -6,6 +6,7 @@
     <title>Tìm kiếm & Bộ lọc - Bếp Việt</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/favorites.css">
     <style>
         .suggestion-item:hover { background-color: #fff7ed; }
     </style>
@@ -14,14 +15,20 @@
 
     <!-- Header -->
     <header class="bg-white border-b sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
             <a href="menu.html" class="flex items-center gap-2 text-xl font-extrabold text-orange-600">
                 <i class="fa-solid fa-bowl-food"></i>
                 <span>Bếp Việt</span>
             </a>
-            <div class="flex items-center gap-3">
-                <a href="menu.html" class="text-sm font-semibold text-gray-600 hover:text-orange-600">
-                    <i class="fa-solid fa-arrow-left mr-1"></i> Quay lại Menu
+            <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+                <a href="menu.html" aria-label="Quay lại thực đơn" class="inline-flex items-center gap-1 rounded-full bg-gray-100 p-2.5 text-sm font-semibold text-gray-600 hover:text-orange-600 sm:px-3">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span class="hidden sm:inline">Quay lại Menu</span>
+                </a>
+                <a href="favorites.html" aria-label="Mở danh sách món yêu thích" class="relative inline-flex items-center gap-2 rounded-full bg-rose-50 p-2.5 text-rose-600 hover:bg-rose-100 sm:px-3">
+                    <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                    <span class="hidden sm:inline">Yêu thích</span>
+                    <span data-favorite-count class="absolute -right-1 -top-1 hidden h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-xs font-bold text-white">0</span>
                 </a>
             </div>
         </div>
@@ -111,6 +118,7 @@
     </main>
 
     <!-- JavaScript xử lý Search, Debounce, Filter, Sort, Grid Render -->
+    <script src="../js/favorites.js"></script>
     <script>
         const API_BASE = "http://127.0.0.1:8000/api";
 
@@ -191,7 +199,8 @@
                 const formattedPrice = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dish.price);
 
                 return `
-                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                    <div class="relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                        ${FavoriteDishes.buttonMarkup(dish)}
                         <div>
                             <div class="aspect-[16/10] w-full overflow-hidden bg-gray-100">
                                 <img src="${imgSrc}" alt="${dish.name}" class="w-full h-full object-cover hover:scale-105 transition duration-300">
