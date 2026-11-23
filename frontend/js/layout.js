@@ -13,6 +13,7 @@ const MENU = [
   { href: "pages/my-orders.html", label: "Đơn của tôi" },
   { href: "pages/admin-coupons.html", label: "Quản lý mã giảm giá" },
   { href: "pages/admin-reviews.html", label: "Quản lý đánh giá" },
+  { href: "pages/admin-dashboard.html", label: "Thống kê (Dashboard)" },
   { href: "pages/items.html", label: "Items (CRUD mẫu)" },
   { href: "pages/chat.html", label: "Chat (Khách)" },
   { href: "pages/staff-chat.html", label: "Chat (Nhân viên)" },
