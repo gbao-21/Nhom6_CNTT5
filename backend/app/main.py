@@ -18,6 +18,7 @@ from app.routers import (
     categories,
     chat,
     coupons,
+    dashboard,
     delivery_areas,
     dishes,
     health,
@@ -80,6 +81,7 @@ app.include_router(orders.router, prefix="/api")
 app.include_router(coupons.router, prefix="/api")
 app.include_router(reviews.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
 
 
 @app.get("/")
