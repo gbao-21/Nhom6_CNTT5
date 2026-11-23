@@ -74,3 +74,16 @@ class DishResponse(DishBase):
     options: list[DishOptionResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+
+class DishAvailabilityUpdate(BaseModel):
+    is_available: bool
+
+
+class DishFeaturedUpdate(BaseModel):
+    is_featured: bool
+
+
+class BestSellerResponse(BaseModel):
+    dish: DishResponse
+    sold_quantity: int

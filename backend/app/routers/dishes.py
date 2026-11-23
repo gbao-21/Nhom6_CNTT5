@@ -11,6 +11,9 @@ from app.schemas.dish import (
     DishOptionCreate,
     DishOptionUpdate,
     DishOptionResponse,
+    DishAvailabilityUpdate,
+    DishFeaturedUpdate,
+    BestSellerResponse,
 )
 
 import uuid
@@ -75,6 +78,22 @@ def list_dishes(
         status=status,
     )
 
+# =========================
+# DANH SÁCH MÓN BÁN CHẠY
+# =========================
+
+@router.get("/best-sellers", response_model=list[BestSellerResponse])
+def list_best_selling_dishes(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+):
+    if limit < 1 or limit > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Limit phải từ 1 đến 100",
+        )
+
+    return dish_crud.get_best_selling_dishes(db, limit)
 
 # Chi tiết món ăn
 @router.get("/{dish_id}", response_model=DishResponse)
@@ -250,3 +269,42 @@ async def upload_dish_image(
     db.refresh(dish)
 
     return dish
+
+# =========================
+# BÁO HẾT MÓN / BÁN LẠI
+# =========================
+
+@router.patch("/{dish_id}/availability", response_model=DishResponse)
+def update_dish_availability(
+    data: DishAvailabilityUpdate,
+    dish=Depends(get_dish_or_404),
+    db: Session = Depends(get_db),
+):
+    try:
+        return dish_crud.update_dish_availability(
+            db,
+            dish,
+            data.is_available,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
+
+# =========================
+# BẬT / TẮT MÓN NỔI BẬT
+# =========================
+
+@router.patch("/{dish_id}/featured", response_model=DishResponse)
+def update_dish_featured(
+    data: DishFeaturedUpdate,
+    dish=Depends(get_dish_or_404),
+    db: Session = Depends(get_db),
+):
+    return dish_crud.update_dish_featured(
+        db,
+        dish,
+        data.is_featured,
+    )
