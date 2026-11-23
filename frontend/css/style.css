@@ -39,7 +39,7 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 24px; }
 #app-header { background: #f97316; border-bottom: 1px solid #ea580c; }
 .header-inner { display: flex; align-items: center; gap: 12px; min-height: 60px; }
 .brand { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; font-weight: 700; color: #fff; text-decoration: none; white-space: nowrap; }
-.nav { display: flex; flex: 1 1 auto; min-width: 0; gap: 4px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
+.nav { display: flex; flex: 1 1 auto; min-width: 0; justify-content: space-evenly; gap: 4px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
 .nav::-webkit-scrollbar { display: none; }
 .nav a { flex: 0 0 auto; padding: 6px 8px; border-radius: var(--radius); color: #fff; text-decoration: none; font-size: 14px; white-space: nowrap; }
 .nav a:hover { background: rgba(255, 255, 255, .16); }
