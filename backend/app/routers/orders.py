@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.crud import order as order_crud
 from app.db.session import get_db
+from app.dependencies import get_current_user_id
 from app.schemas.order import (
     OrderCancelRequest,
     OrderCreate,
@@ -75,13 +76,34 @@ def get_order(order=Depends(get_order_or_404)):
     return order
 
 
-@router.post("", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="API đặt món trong transaction (kiểm tra món còn bán, lưu giá & tùy chọn lúc đặt, tạo đơn + chi tiết, xoá giỏ)",
+)
+@router.post(
+    "/checkout",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="API đặt món từ giỏ hàng trong transaction",
+)
 def create_order(
     data: OrderCreate,
-    user_id: int = 1,
+    current_user_id: int = Depends(get_current_user_id),
+    x_idempotency_key: str | None = Header(
+        default=None,
+        alias="X-Idempotency-Key",
+        description="Khóa chống bấm đặt 2 lần (tùy chọn)",
+    ),
     db: Session = Depends(get_db),
 ):
-    return order_service.create_order_for_user(db, user_id=user_id, data=data)
+    return order_service.create_order_for_user(
+        db=db,
+        user_id=current_user_id,
+        data=data,
+        idempotency_key=x_idempotency_key,
+    )
 
 
 @router.post("/{order_id}/cancel", response_model=OrderResponse)
@@ -120,4 +142,3 @@ def update_order_status(
         changed_by=data.changed_by,
         note=data.note,
     )
-

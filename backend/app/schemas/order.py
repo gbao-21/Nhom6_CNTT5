@@ -18,18 +18,18 @@ class OrderStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
-# Tùy chọn khách chọn khi đặt món
+# Tùy chọn khách chọn khi đặt món (hỗ trợ truyền thêm name/price nếu không dùng bảng dish_options)
 class OrderOptionCreate(BaseModel):
     option_id: int
+    name: str | None = None
+    price: Decimal | None = Field(default=None, ge=0)
 
 
 class OrderItemCreate(BaseModel):
     dish_id: int
-    selected_options: list[OrderOptionCreate] = Field(
-        default_factory=list
-    )
+    selected_options: list[OrderOptionCreate] = Field(default_factory=list)
     note: str | None = None
-    quantity: int = Field(gt=0)
+    quantity: int = Field(default=1, gt=0)
 
 
 class OrderCreate(BaseModel):
@@ -39,8 +39,18 @@ class OrderCreate(BaseModel):
     delivery_area_id: int
     payment_method: PaymentMethod
     desired_delivery_at: datetime | None = None
+    voucher_code: str | None = None
+    idempotency_key: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Khóa chống bấm đặt 2 lần (tùy chọn)",
+    )
+    # Nếu items để trống hoặc không gửi, hệ thống tự động lấy các món từ giỏ hàng của user
+    items: list[OrderItemCreate] | None = Field(
+        default=None,
+        description="Danh sách món đặt. Nếu để trống (null / []), hệ thống tự lấy từ giỏ hàng của user.",
+    )
     coupon_code: str | None = Field(default=None, max_length=50, description="Mã giảm giá (không phân biệt hoa thường)")
-    items: list[OrderItemCreate] = Field(min_length=1)
 
 
 class OrderStatusUpdate(BaseModel):
@@ -70,8 +80,8 @@ class OrderStatusHistoryResponse(BaseModel):
 # Tên và giá tùy chọn được lưu tại thời điểm đặt
 class OrderOptionResponse(BaseModel):
     option_id: int
-    name: str
-    price: Decimal
+    name: str | None = None
+    price: Decimal = Decimal("0")
 
 
 class OrderItemResponse(BaseModel):
