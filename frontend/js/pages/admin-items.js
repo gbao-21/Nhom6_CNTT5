@@ -668,3 +668,39 @@ async function initPage() {
 }
 
 initPage();
+
+async function toggleDishAvailability(dish) {
+    const isAvailable = dish.status === "OUT_OF_STOCK";
+
+    try {
+        await api.patch(
+            `/dishes/${dish.id}/availability`,
+            {
+                is_available: isAvailable
+            }
+        );
+
+        showMessage(
+            isAvailable ? "Món đã được mở bán." : "Đã báo hết món."
+        );
+
+        await loadDishes();
+    } catch (error) {
+        showMessage(error.message, "error");
+    }
+}
+async function toggleDishFeatured(dish) {
+    try {
+        await api.patch(
+            `/dishes/${dish.id}/featured`,
+            {
+                is_featured: !dish.is_featured
+            }
+        );
+
+        showMessage("Đã cập nhật trạng thái món nổi bật.");
+        await loadDishes();
+    } catch (error) {
+        showMessage(error.message, "error");
+    }
+}

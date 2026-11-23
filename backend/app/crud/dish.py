@@ -1,7 +1,8 @@
 """CRUD cho bảng dishes và dish_options."""
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
+from sqlalchemy import select, func, desc
+from app.models.order import Order, OrderItem
 from app.models.dish import Dish, DishOption
 from app.models.order import OrderItem
 from app.schemas.dish import (
@@ -182,3 +183,79 @@ def delete_dish_option(
 ) -> None:
     db.delete(option)
     db.commit()
+
+# =========================
+# BÁO HẾT MÓN / BÁN LẠI
+# =========================
+
+def update_dish_availability(
+    db: Session,
+    dish: Dish,
+    is_available: bool,
+) -> Dish:
+    if dish.status == "HIDDEN" or not dish.is_active:
+        raise ValueError("Món đang bị ẩn, không thể bật bán.")
+
+    if is_available:
+        dish.status = "AVAILABLE"
+        dish.is_available = True
+    else:
+        dish.status = "OUT_OF_STOCK"
+        dish.is_available = False
+
+    db.commit()
+    db.refresh(dish)
+
+    return dish
+
+
+# =========================
+# BẬT / TẮT MÓN NỔI BẬT
+# =========================
+
+def update_dish_featured(
+    db: Session,
+    dish: Dish,
+    is_featured: bool,
+) -> Dish:
+    dish.is_featured = is_featured
+
+    db.commit()
+    db.refresh(dish)
+
+    return dish
+
+
+# =========================
+# DANH SÁCH MÓN BÁN CHẠY
+# =========================
+
+def get_best_selling_dishes(
+    db: Session,
+    limit: int = 10,
+):
+    statement = (
+        select(
+            Dish,
+            func.sum(OrderItem.quantity).label("sold_quantity")
+        )
+        .join(OrderItem, OrderItem.dish_id == Dish.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            Order.status == "COMPLETED",
+            Dish.status != "HIDDEN",
+        )
+        .group_by(Dish.id)
+        .order_by(desc("sold_quantity"))
+        .limit(limit)
+    )
+
+    results = db.execute(statement).all()
+
+    return [
+        {
+            "dish": dish,
+            "sold_quantity": int(sold_quantity),
+        }
+        for dish, sold_quantity in results
+    ]
