@@ -1,0 +1,198 @@
+
+/* =========================
+   ADMIN LAYOUT
+========================= */
+
+body {
+    padding-top: 65px;
+    padding-left: 250px;
+    transition: padding-left 0.25s;
+}
+
+/* Sidebar */
+
+.admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    background: #242424;
+    color: white;
+    z-index: 1000;
+
+    display: flex;
+    flex-direction: column;
+
+    transition: transform 0.25s;
+}
+
+.admin-brand {
+    height: 65px;
+    min-height: 65px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 22px;
+
+    font-size: 20px;
+    font-weight: bold;
+    color: #fb923c;
+
+    border-bottom: 1px solid #3f3f3f;
+}
+
+.admin-brand i {
+    font-size: 23px;
+}
+
+.admin-menu-title {
+    padding: 25px 20px 12px;
+    font-size: 11px;
+    color: #999;
+    font-weight: bold;
+}
+
+.admin-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 12px;
+}
+
+.admin-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 13px 15px;
+    border-radius: 8px;
+
+    color: #d4d4d4;
+    text-decoration: none;
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+.admin-menu-item:hover {
+    background: #3f3f3f;
+    color: white;
+}
+
+.admin-menu-item.active {
+    background: #f97316;
+    color: white;
+}
+
+.admin-menu-item i {
+    width: 18px;
+    text-align: center;
+}
+
+/* Footer Sidebar */
+
+.admin-sidebar-footer {
+    margin-top: auto;
+    padding: 18px 20px;
+
+    border-top: 1px solid #3f3f3f;
+
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    font-size: 13px;
+}
+
+.admin-sidebar-footer small {
+    color: #999;
+}
+
+/* Topbar */
+
+.admin-topbar {
+    position: fixed;
+    top: 0;
+    left: 250px;
+    right: 0;
+
+    height: 65px;
+    background: white;
+
+    border-bottom: 1px solid #e5e5e5;
+
+    display: flex;
+    align-items: center;
+    gap: 18px;
+
+    padding: 0 24px;
+    z-index: 999;
+
+    transition: left 0.25s;
+}
+
+.admin-topbar button {
+    border: none;
+    background: none;
+
+    font-size: 20px;
+    cursor: pointer;
+    color: #444;
+}
+
+.admin-topbar h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Ẩn Sidebar trên desktop */
+
+body.sidebar-collapsed {
+    padding-left: 0;
+}
+
+.sidebar-collapsed .admin-sidebar {
+    transform: translateX(-100%);
+}
+
+.sidebar-collapsed .admin-topbar {
+    left: 0;
+}
+
+/* Overlay */
+
+.admin-overlay {
+    display: none;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+
+    body {
+        padding-left: 0;
+    }
+
+    .admin-sidebar {
+        transform: translateX(-100%);
+    }
+
+    .admin-topbar {
+        left: 0;
+    }
+
+    body.sidebar-open .admin-sidebar {
+        transform: translateX(0);
+    }
+
+    body.sidebar-open .admin-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 998;
+    }
+}
