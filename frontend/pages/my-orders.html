@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đơn của tôi | KS25</title>
+  <link rel="icon" href="../assets/images/logo.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-root="../">
+  <header id="app-header"></header>
+
+  <main class="container">
+    <div class="card">
+      <h2 style="margin-bottom:12px;">Đơn hàng đã hoàn thành</h2>
+      <div id="completed-orders-list">
+        <p class="muted">Đang tải đơn hàng...</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Đánh giá đơn hàng</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div>
+          <label for="order-id-input" style="margin-top:0;">ID đơn hàng</label>
+          <input id="order-id-input" type="number" min="1" placeholder="VD: 1" style="width:160px;">
+        </div>
+        <button id="btn-load-order" class="btn btn-primary">Xem đơn</button>
+      </div>
+    </div>
+
+    <div id="order-info" hidden class="card">
+      <div id="order-status-info"></div>
+      <button id="reorder-button" type="button" class="btn btn-primary" hidden style="margin-top:12px;">
+        <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+        Đặt lại
+      </button>
+    </div>
+
+    <div id="reviews-section" hidden>
+      <div class="card">
+        <h3 style="margin-top:0;">Các món trong đơn</h3>
+        <div id="dish-reviews-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="app-footer"></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/pages/my-orders.js"></script>
+</body>
+</html>
+

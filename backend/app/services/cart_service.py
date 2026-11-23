@@ -1,13 +1,36 @@
-"""Service xử lý nghiệp vụ giỏ hàng (Cart)."""
+"""Service xử lý nghiệp vụ giỏ hàng & tính tiền (Cart)."""
 from sqlalchemy.orm import Session
 
 from app.crud import cart as cart_crud
 from app.models.cart import Cart, CartItem
-from app.schemas.cart import CartItemCreate, CartItemUpdate
+from app.schemas.cart import CartCalculateRequest, CartItemCreate, CartItemUpdate
 
 
-def get_my_cart(db: Session, current_user_id: int) -> Cart:
-    return cart_crud.get_or_create_cart_by_user(db, current_user_id)
+def get_my_cart(
+    db: Session,
+    current_user_id: int,
+    delivery_area_id: int | None = None,
+    voucher_code: str | None = None,
+) -> Cart:
+    return cart_crud.get_or_create_cart_by_user(
+        db,
+        user_id=current_user_id,
+        delivery_area_id=delivery_area_id,
+        voucher_code=voucher_code,
+    )
+
+
+def calculate_my_cart(
+    db: Session,
+    current_user_id: int,
+    data: CartCalculateRequest,
+) -> Cart:
+    return cart_crud.get_or_create_cart_by_user(
+        db,
+        user_id=current_user_id,
+        delivery_area_id=data.delivery_area_id,
+        voucher_code=data.voucher_code,
+    )
 
 
 def add_item_to_my_cart(
@@ -37,4 +60,3 @@ def remove_my_cart_item(
 
 def clear_my_cart(db: Session, current_user_id: int) -> None:
     cart_crud.clear_user_cart(db, current_user_id)
-

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.order_status import VALID_STATUS_TRANSITIONS, is_valid_status_transition
 from app.models.cart import Cart
+from app.crud import coupon as coupon_crud
 from app.models.delivery_area import DeliveryArea
 from app.models.dish import Dish, DishOption
 from app.models.order import Order, OrderItem, OrderStatusHistory

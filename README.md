@@ -1,4 +1,4 @@
-# Base code dự án thực tập: HN-KS25-CNTT1
+# Base code dự án thực tập: HN-KS25-CNTT5
 
 Khung dự án chung cho các nhóm (04/11 – 25/11/2026). Gồm 2 phần đã nối sẵn với nhau:
 
@@ -26,3 +26,11 @@ Trình duyệt (frontend) --axios JSON--> FastAPI (backend :8000/api) --SQLAlche
 3. **Frontend:** VS Code → chuột phải `frontend/index.html` → *Open with Live Server*.
 
 Trang chủ frontend hiện **✅ Backend OK · MySQL: connected** là đã thông cả 3 tầng. Sau đó mỗi nhóm đổi ví dụ `items` thành các chức năng của đề tài mình (xem mục *Thêm chức năng* / *Thêm trang mới* trong từng README).
+
+> **Nếu terminal đang ở thư mục gốc `Nhom6_CNTT5`**, chạy đúng các lệnh PowerShell sau. Không dùng `uvicorn main:app --reload`: dự án không có module `main.py` ở thư mục gốc.
+> ```powershell
+> Set-Location .\backend
+> ..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+> ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+> ```
+> Nếu terminal đã ở trong `backend/`, dùng `..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload`.

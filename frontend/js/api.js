@@ -63,7 +63,15 @@ http.interceptors.response.use(
 
 const api = {
   get: (path, params) => http.get(path, { params }).then((res) => res.data),
-  post: (path, body) => http.post(path, body).then((res) => res.data),
-  put: (path, body) => http.put(path, body).then((res) => res.data),
-  delete: (path) => http.delete(path).then((res) => res.data),
+  post: (path, body, params) => http.post(path, body, { params }).then((res) => res.data),
+  put: (path, body, params) => http.put(path, body, { params }).then((res) => res.data),
+  patch: (path, body, params) => http.patch(path, body, { params }).then((res) => res.data),
+  delete: (path, params) => http.delete(path, { params }).then((res) => res.data),
+  // Upload file ảnh
+    upload: (path, formData) => http.post(path, formData, {
+        headers: {
+            "Content-Type": "multipart/form-data"
+        }
+    }).then((res) => res.data)
 };
+

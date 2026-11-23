@@ -88,14 +88,15 @@ CREATE TABLE IF NOT EXISTS carts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS cart_items (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  cart_id          INT NOT NULL,
-  dish_id          INT NOT NULL,
-  selected_options JSON NULL,
-  note             VARCHAR(500) NULL,
-  quantity         INT NOT NULL DEFAULT 1,
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id                  INT AUTO_INCREMENT PRIMARY KEY,
+  cart_id             INT NOT NULL,
+  dish_id             INT NOT NULL,
+  dish_price_snapshot DECIMAL(15, 2) NULL,
+  selected_options    JSON NULL,
+  note                VARCHAR(500) NULL,
+  quantity            INT NOT NULL DEFAULT 1,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
   CONSTRAINT fk_cart_items_dish FOREIGN KEY (dish_id) REFERENCES dishes(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -110,6 +111,7 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_address    VARCHAR(500) NOT NULL,
   delivery_area_id    INT NOT NULL,
   shipping_fee        DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  coupon_code         VARCHAR(50) NULL,
   discount_amount     DECIMAL(15, 2) NOT NULL DEFAULT 0,
   subtotal            DECIMAL(15, 2) NOT NULL,
   total_amount        DECIMAL(15, 2) NOT NULL,
@@ -151,7 +153,7 @@ INSERT IGNORE INTO categories (id, name, description, is_active) VALUES
 
 INSERT IGNORE INTO dishes (id, category_id, name, description, price, is_available, is_active, status) VALUES
   (1, 1, 'Mì trộn Indomie đặc biệt', 'Mì trộn kèm trứng lòng đào và xúc xích', 45000, 1, 1, 'AVAILABLE'),
-  (2, 1, 'Cơm gà xối mỡ (Hết hàng)', 'Món dùng để test chặn món hết hàng', 55000, 0, 1, 'OUT_OF_STOCK'),
+  (2, 1, 'Cơm gà xối mỡ', 'Cơm ăn kèm gà chiên giòn', 55000, 1, 1, 'AVAILABLE'),
   (3, 1, 'Cháo sườn sụn (Món ẩn)', 'Món dùng để test chặn món bị ẩn', 35000, 1, 0, 'HIDDEN');
 
 INSERT IGNORE INTO dish_options (id, dish_id, name, price, is_available) VALUES
@@ -174,3 +176,163 @@ CREATE TABLE IF NOT EXISTS order_status_histories (
   CONSTRAINT fk_status_histories_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   CONSTRAINT fk_status_histories_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bổ sung thứ tự danh mục
+ALTER TABLE categories
+ADD COLUMN sort_order INT NOT NULL DEFAULT 0;
+
+-- Bổ sung đánh dấu món nổi bật
+ALTER TABLE dishes
+ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0;
+
+-- Bổ sung thông tin nhóm tùy chọn
+ALTER TABLE dish_options
+ADD COLUMN group_name VARCHAR(100) NOT NULL DEFAULT 'Topping',
+ADD COLUMN is_required TINYINT(1) NOT NULL DEFAULT 0,
+ADD COLUMN allow_multiple TINYINT(1) NOT NULL DEFAULT 0;
+-- 1. Thêm 6 danh mục
+INSERT INTO categories (name, description, sort_order, is_active)
+SELECT v.name, v.description, v.sort_order, 1
+FROM (
+    SELECT 'Mì và đồ ăn nhanh' AS name,
+           'Các món mì và đồ ăn nhanh' AS description, 1 AS sort_order
+    UNION ALL
+    SELECT 'Cơm và món no', 'Các món cơm và món ăn chính', 2
+    UNION ALL
+    SELECT 'Đồ ăn vặt', 'Các món ăn nhẹ và ăn vặt', 3
+    UNION ALL
+    SELECT 'Đồ chiên', 'Các món chiên giòn', 4
+    UNION ALL
+    SELECT 'Đồ uống', 'Nước uống và giải khát', 5
+    UNION ALL
+    SELECT 'Ăn đêm đặc biệt', 'Các món đặc biệt dành cho buổi tối', 6
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM categories c WHERE c.name = v.name
+);
+
+-- 2. Thêm 30 món
+INSERT INTO dishes (
+    category_id, name, description, price,
+    image_url, is_available, is_active,
+    status, is_featured
+)
+SELECT
+    c.id, v.name, v.description, v.price,
+    NULL, 1, 1, 'AVAILABLE', v.is_featured
+FROM (
+    SELECT 'Mì và đồ ăn nhanh' AS category_name,
+           'Mì trộn Indomie' AS name,
+           'Mì trộn sốt đặc biệt' AS description,
+           35000 AS price, 1 AS is_featured
+    UNION ALL SELECT 'Mì và đồ ăn nhanh', 'Mì cay hải sản', 'Mì cay cùng hải sản', 55000, 1
+    UNION ALL SELECT 'Mì và đồ ăn nhanh', 'Mì xào bò', 'Mì xào thịt bò', 45000, 0
+    UNION ALL SELECT 'Mì và đồ ăn nhanh', 'Mì trộn xúc xích', 'Mì trộn xúc xích và rau', 40000, 0
+    UNION ALL SELECT 'Mì và đồ ăn nhanh', 'Mì tương đen', 'Mì sốt tương đen Hàn Quốc', 45000, 0
+
+    UNION ALL SELECT 'Cơm và món no', 'Cơm gà xối mỡ', 'Cơm gà chiên giòn', 55000, 1
+    UNION ALL SELECT 'Cơm và món no', 'Cơm rang dưa bò', 'Cơm rang với thịt bò và dưa chua', 50000, 0
+    UNION ALL SELECT 'Cơm và món no', 'Cơm sườn nướng', 'Cơm sườn nướng mật ong', 55000, 1
+    UNION ALL SELECT 'Cơm và món no', 'Cơm chiên trứng', 'Cơm chiên trứng đơn giản', 35000, 0
+    UNION ALL SELECT 'Cơm và món no', 'Cơm bò lúc lắc', 'Cơm ăn kèm bò lúc lắc', 60000, 0
+
+    UNION ALL SELECT 'Đồ ăn vặt', 'Bánh tráng trộn', 'Bánh tráng trộn đầy đủ topping', 25000, 1
+    UNION ALL SELECT 'Đồ ăn vặt', 'Xúc xích nướng', 'Xúc xích nướng ăn kèm tương', 15000, 0
+    UNION ALL SELECT 'Đồ ăn vặt', 'Cá viên chiên', 'Cá viên chiên giòn', 30000, 0
+    UNION ALL SELECT 'Đồ ăn vặt', 'Khoai tây lắc phô mai', 'Khoai tây chiên lắc phô mai', 35000, 1
+    UNION ALL SELECT 'Đồ ăn vặt', 'Phô mai que', 'Phô mai que chiên giòn', 30000, 0
+
+    UNION ALL SELECT 'Đồ chiên', 'Gà rán truyền thống', 'Gà rán giòn', 40000, 1
+    UNION ALL SELECT 'Đồ chiên', 'Cánh gà chiên nước mắm', 'Cánh gà chiên nước mắm', 50000, 0
+    UNION ALL SELECT 'Đồ chiên', 'Đùi gà chiên giòn', 'Đùi gà tẩm bột chiên', 45000, 0
+    UNION ALL SELECT 'Đồ chiên', 'Tôm chiên xù', 'Tôm tẩm bột chiên xù', 55000, 0
+    UNION ALL SELECT 'Đồ chiên', 'Mực chiên giòn', 'Mực tẩm bột chiên giòn', 60000, 1
+
+    UNION ALL SELECT 'Đồ uống', 'Trà đào cam sả', 'Trà đào cam sả mát lạnh', 30000, 1
+    UNION ALL SELECT 'Đồ uống', 'Trà tắc', 'Trà tắc giải khát', 15000, 0
+    UNION ALL SELECT 'Đồ uống', 'Coca Cola', 'Nước ngọt Coca Cola', 15000, 0
+    UNION ALL SELECT 'Đồ uống', 'Nước cam ép', 'Nước cam ép tươi', 25000, 0
+    UNION ALL SELECT 'Đồ uống', 'Trà sữa truyền thống', 'Trà sữa vị truyền thống', 30000, 1
+
+    UNION ALL SELECT 'Ăn đêm đặc biệt', 'Cháo sườn sụn', 'Cháo sườn sụn nóng', 35000, 1
+    UNION ALL SELECT 'Ăn đêm đặc biệt', 'Bánh mì bò sốt vang', 'Bánh mì ăn cùng bò sốt vang', 45000, 0
+    UNION ALL SELECT 'Ăn đêm đặc biệt', 'Lẩu tokbokki mini', 'Lẩu tokbokki Hàn Quốc', 65000, 1
+    UNION ALL SELECT 'Ăn đêm đặc biệt', 'Bún trộn thịt nướng', 'Bún trộn thịt nướng và rau', 45000, 0
+    UNION ALL SELECT 'Ăn đêm đặc biệt', 'Mì Ý sốt bò bằm', 'Mì Ý sốt bò bằm', 55000, 0
+) AS v
+JOIN categories c ON c.name = v.category_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM dishes d
+    WHERE d.category_id = c.id
+      AND d.name = v.name
+);
+-- 9. Bảng mã giảm giá (coupons)
+CREATE TABLE IF NOT EXISTS coupons (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  code             VARCHAR(50) NOT NULL UNIQUE,
+  description      VARCHAR(500) NULL,
+  discount_type    VARCHAR(20) NOT NULL DEFAULT 'FIXED',
+  discount_value   DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  min_order_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  max_uses         INT NULL,
+  used_count       INT NOT NULL DEFAULT 0,
+  valid_from       DATETIME NULL,
+  valid_to         DATETIME NULL,
+  status           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO coupons (id, code, description, discount_type, discount_value, min_order_amount, max_uses, used_count, status) VALUES
+  (1, 'GIAM10K', 'Giảm 10.000đ cho đơn từ 40.000đ', 'FIXED', 10000, 40000, 10, 0, 'ACTIVE'),
+  (2, 'SALE10', 'Giảm 10% cho mọi đơn hàng', 'PERCENT', 10, 0, 50, 0, 'ACTIVE');
+
+-- 10. Bảng phiếu giảm giá cá nhân (vouchers)
+CREATE TABLE IF NOT EXISTS vouchers (
+  id                  INT AUTO_INCREMENT PRIMARY KEY,
+  code                VARCHAR(50) NOT NULL UNIQUE,
+  discount_type       VARCHAR(20) NOT NULL DEFAULT 'PERCENT',
+  discount_value      DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  min_order_amount    DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  max_discount_amount DECIMAL(15, 2) NULL,
+  valid_from          DATETIME NULL,
+  valid_to            DATETIME NULL,
+  max_uses            INT NULL,
+  used_count          INT NOT NULL DEFAULT 0,
+  status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 11. Bảng đánh giá món ăn (reviews)
+CREATE TABLE IF NOT EXISTS reviews (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  order_id    INT NULL,
+  dish_id     INT NULL,
+  user_id     INT NULL,
+  rating      SMALLINT NOT NULL,
+  content     TEXT NULL,
+  image_url   VARCHAR(500) NULL,
+  shop_reply  TEXT NULL,
+  replied_at  DATETIME NULL,
+  is_hidden   TINYINT(1) NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_reviews_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_reviews_dish FOREIGN KEY (dish_id) REFERENCES dishes(id) ON DELETE SET NULL,
+  CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. Bảng tin nhắn hỗ trợ (chat_messages)
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  customer_id INT NULL,
+  sender_id   INT NULL,
+  content     TEXT NOT NULL,
+  is_read     TINYINT(1) NOT NULL DEFAULT 0,
+  sent_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_chat_customer FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_chat_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

@@ -17,6 +17,10 @@
                 <i class="fa-solid fa-utensils"></i> Bếp Việt
             </a>
             <div class="flex items-center gap-4">
+                <a href="items.html" aria-label="Chuyển đến trang tìm kiếm món ăn" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <span>Tìm món</span>
+                </a>
                 <div class="relative hidden md:block">
                     <input type="text" id="searchInput" placeholder="Tìm kiếm món ăn..." class="pl-10 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 w-64">
                     <i class="fa-solid fa-search absolute left-3.5 top-3 text-gray-400"></i>
@@ -29,11 +33,29 @@
         </div>
     </header>
 
+    <div id="cartToast" class="fixed bottom-5 right-5 z-[100] hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg" role="status" aria-live="polite"></div>
+
     <!-- Banner -->
     <section class="bg-gradient-to-r from-orange-500 to-amber-600 text-white py-12 px-4 text-center">
         <div class="max-w-3xl mx-auto">
             <h1 class="text-3xl md:text-4xl font-extrabold mb-3">Thực Đơn Đêm Ấm Cúng & Ngon Miệng</h1>
             <p class="text-orange-100 text-sm md:text-base">Giao hàng nhanh chóng tận nơi, hương vị đậm đà chuẩn vị nhà làm.</p>
+        </div>
+    </section>
+
+    <!-- Món đã xem gần đây -->
+    <section id="recentDishesSection" class="max-w-7xl mx-auto px-4 pt-8">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="flex items-center gap-2 text-xl font-bold text-gray-900 md:text-2xl">
+                <i class="fa-solid fa-clock-rotate-left text-orange-500" aria-hidden="true"></i>
+                Món đã xem gần đây
+            </h2>
+            <button id="clearRecentDishes" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-red-600">
+                <i class="fa-solid fa-xmark mr-1" aria-hidden="true"></i>
+                Đặt lại
+            </button>
+        </div>
+        <div id="recentDishesContainer" class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
         </div>
     </section>
 
@@ -64,22 +86,354 @@
         <p>&copy; 2026 Bếp Việt - Đồ ăn đêm chất lượng cao.</p>
     </footer>
 
+    <!-- ===================== CHAT NỔI ===================== -->
+    <!-- Nút mở chat -->
+    <button id="btn-open-chat"
+        class="fixed bottom-6 right-6 z-50 bg-orange-500 hover:bg-orange-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition"
+        title="Chat với cửa hàng">
+        <i class="fa-solid fa-comment-dots"></i>
+        <span id="chat-unread-badge"
+            class="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold w-5 h-5 rounded-full items-center justify-center hidden">0</span>
+    </button>
+
+    <!-- Khung chat popup -->
+    <div id="chat-box"
+        class="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden hidden"
+        style="height: 420px;">
+        <div class="bg-orange-500 text-white px-4 py-3 flex justify-between items-center flex-shrink-0">
+            <span class="font-semibold text-sm">💬 Chat với cửa hàng</span>
+            <button id="btn-close-chat" class="text-white hover:text-orange-200 text-lg leading-none">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50 text-sm"></div>
+        <div class="flex items-center gap-2 px-3 py-2 border-t border-gray-200 bg-white flex-shrink-0">
+            <input id="chat-input" type="text" placeholder="Nhập tin nhắn..."
+                class="flex-1 border border-gray-300 rounded-full px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            <button id="btn-send-chat"
+                class="bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center transition flex-shrink-0">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ── Chat widget ──────────────────────────────────────────────────────
+        const CHAT_API = "http://127.0.0.1:8000/api";
+        const CUSTOMER_ID = 1; // Demo: khách hàng id=1
+
+        let chatLastId = 0;
+        let chatIsOpen = false;
+
+        const chatBox = document.getElementById("chat-box");
+        const btnOpen = document.getElementById("btn-open-chat");
+        const btnClose = document.getElementById("btn-close-chat");
+        const chatMsgList = document.getElementById("chat-messages");
+        const chatInput = document.getElementById("chat-input");
+        const btnSendChat = document.getElementById("btn-send-chat");
+        const unreadBadge = document.getElementById("chat-unread-badge");
+
+        btnOpen.addEventListener("click", () => {
+            chatIsOpen = true;
+            chatBox.classList.remove("hidden");
+            unreadBadge.classList.add("hidden");
+            unreadBadge.textContent = "0";
+            chatLoadMessages();
+            chatMarkRead();
+        });
+
+        btnClose.addEventListener("click", () => {
+            chatIsOpen = false;
+            chatBox.classList.add("hidden");
+        });
+
+        btnSendChat.addEventListener("click", chatSend);
+        chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") chatSend(); });
+
+        async function chatSend() {
+            const content = chatInput.value.trim();
+            if (!content) return;
+            chatInput.value = "";
+            chatInput.disabled = true;
+            btnSendChat.disabled = true;
+            try {
+                await fetch(`${CHAT_API}/chat/messages`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ customer_id: CUSTOMER_ID, sender_id: CUSTOMER_ID, content }),
+                });
+                await chatLoadMessages();
+            } catch (e) { console.error(e); }
+            finally {
+                chatInput.disabled = false;
+                btnSendChat.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        async function chatLoadMessages() {
+            try {
+                const url = chatLastId > 0
+                    ? `${CHAT_API}/chat/messages/${CUSTOMER_ID}?since=${chatLastId}`
+                    : `${CHAT_API}/chat/messages/${CUSTOMER_ID}`;
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const msgs = await res.json();
+                if (!msgs.length) return;
+                msgs.forEach(chatAppend);
+                chatLastId = msgs[msgs.length - 1].id;
+                chatMsgList.scrollTop = chatMsgList.scrollHeight;
+            } catch (e) { console.error(e); }
+        }
+
+        async function chatMarkRead() {
+            try {
+                await fetch(`${CHAT_API}/chat/messages/${CUSTOMER_ID}/read?reader_id=${CUSTOMER_ID}`, { method: "PATCH" });
+            } catch (_) {}
+        }
+
+        function chatAppend(msg) {
+            const isMe = msg.sender_id === CUSTOMER_ID;
+            const div = document.createElement("div");
+            div.className = `flex ${isMe ? "justify-end" : "justify-start"}`;
+            div.innerHTML = `
+                <div class="max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-snug shadow-sm
+                    ${isMe ? "bg-orange-500 text-white rounded-br-sm" : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm"}">
+                    ${chatEsc(msg.content)}
+                    <div class="text-[10px] mt-1 ${isMe ? "text-orange-100 text-right" : "text-gray-400"}">
+                        ${new Date(msg.sent_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                </div>`;
+            chatMsgList.appendChild(div);
+        }
+
+        function chatEsc(str) {
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // Polling 3 giây
+        setInterval(async () => {
+            if (chatIsOpen) {
+                await chatLoadMessages();
+                await chatMarkRead();
+            } else {
+                try {
+                    const res = await fetch(`${CHAT_API}/chat/messages/${CUSTOMER_ID}`);
+                    if (!res.ok) return;
+                    const all = await res.json();
+                    const unread = all.filter(m => m.sender_id !== CUSTOMER_ID && !m.is_read).length;
+                    if (unread > 0) {
+                        unreadBadge.textContent = unread > 9 ? "9+" : unread;
+                        unreadBadge.classList.remove("hidden");
+                        unreadBadge.classList.add("flex");
+                    } else {
+                        unreadBadge.classList.add("hidden");
+                    }
+                } catch (_) {}
+            }
+        }, 3000);
+    </script>
+
     <!-- JavaScript xử lý gọi API và giao diện -->
     <script>
         const API_BASE = "http://127.0.0.1:8000/api";
+        const menuSearchInput = document.getElementById('searchInput');
+        let menuCategories = [];
 
         async function fetchMenuOverview() {
+            let categories;
             try {
                 const response = await fetch(`${API_BASE}/menu/overview`);
+                if (!response.ok) {
+                    throw new Error(`Backend trả về lỗi HTTP ${response.status}`);
+                }
                 const data = await response.json();
-                renderMenu(data.categories);
-            } catch (error) {
-                console.error("Lỗi khi tải thực đơn:", error);
+                categories = Array.isArray(data.categories) ? data.categories : [];
+            } catch (overviewError) {
+                try {
+                    const [categoriesResponse, dishesResponse] = await Promise.all([
+                        fetch(`${API_BASE}/categories`),
+                        fetch(`${API_BASE}/dishes`),
+                    ]);
+                    if (!categoriesResponse.ok || !dishesResponse.ok) {
+                        throw new Error(
+                            `Backend trả về lỗi HTTP ${categoriesResponse.status}/${dishesResponse.status}`,
+                        );
+                    }
+
+                    const [allCategories, allDishes] = await Promise.all([
+                        categoriesResponse.json(),
+                        dishesResponse.json(),
+                    ]);
+                    categories = allCategories
+                        .filter((category) => category.is_active)
+                        .map((category) => ({
+                            ...category,
+                            dishes: allDishes.filter(
+                                (dish) => dish.is_active && dish.category_id === category.id,
+                            ),
+                        }));
+                } catch (fallbackError) {
+                    console.error("Không tải được thực đơn:", overviewError, fallbackError);
+                    document.getElementById('categoryNavLinks').replaceChildren();
+                    document.getElementById('featuredDishesContainer').replaceChildren();
+                    const errorElement = document.createElement('p');
+                    errorElement.className = 'rounded-xl border bg-white p-6 text-center text-red-600';
+                    errorElement.textContent =
+                        'Không thể tải thực đơn. Hãy kiểm tra backend và thử tải lại trang.';
+                    document.getElementById('menuSectionsContainer').replaceChildren(errorElement);
+                    return;
+                }
+            }
+
+            menuCategories = categories;
+            updateMenuDisplay();
+            renderRecentDishes();
+        }
+
+        function resolveDishImageUrl(imageUrl) {
+            if (!imageUrl) return '';
+            return imageUrl.startsWith('/uploads/')
+                ? `${API_BASE.replace(/\/api\/?$/, '')}${imageUrl}`
+                : imageUrl;
+        }
+
+        function getApiErrorMessage(data, status) {
+            if (typeof data.detail === 'string') return data.detail;
+            if (Array.isArray(data.detail)) {
+                return data.detail.map((item) => `${item.loc[item.loc.length - 1]}: ${item.msg}`).join('; ');
+            }
+            return `Backend trả về lỗi HTTP ${status}`;
+        }
+
+        function updateMenuDisplay() {
+            const searchTerm = menuSearchInput.value.trim().toLocaleLowerCase('vi');
+            if (!searchTerm) {
+                renderMenu(menuCategories);
+                return;
+            }
+
+            const filteredCategories = menuCategories
+                .map((category) => {
+                    const categoryMatches = category.name.toLocaleLowerCase('vi').includes(searchTerm);
+                    return {
+                        ...category,
+                        dishes: categoryMatches
+                            ? category.dishes
+                            : category.dishes.filter((dish) =>
+                                `${dish.name} ${dish.description || ''}`
+                                    .toLocaleLowerCase('vi')
+                                    .includes(searchTerm),
+                            ),
+                    };
+                })
+                .filter((category) => category.name.toLocaleLowerCase('vi').includes(searchTerm) ||
+                    category.dishes.length > 0);
+
+            renderMenu(filteredCategories);
+        }
+
+        menuSearchInput.addEventListener('input', updateMenuDisplay);
+
+        const RECENT_DISHES_KEY = 'recentDishes';
+
+        function getRecentDishes() {
+            try {
+                const data = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || '[]');
+                return Array.isArray(data) ? data : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function renderRecentDishes() {
+            const section = document.getElementById('recentDishesSection');
+            const container = document.getElementById('recentDishesContainer');
+            const recent = getRecentDishes();
+
+            if (recent.length === 0) {
+                container.innerHTML = `
+                    <p class="col-span-full rounded-xl border border-dashed border-gray-200 bg-white p-5 text-center text-sm text-gray-500">
+                        Chưa có món nào được xem gần đây.
+                    </p>
+                `;
+                return;
+            }
+
+            section.classList.remove('hidden');
+            container.innerHTML = recent.map(dish => {
+                const imageUrl = getSafeImageUrl(
+                    dish.image_url,
+                    'https://via.placeholder.com/300x200?text=M%C3%B3n+an',
+                );
+                return `
+                    <article class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="block">
+                            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" class="h-36 w-full object-cover">
+                            <div class="p-3">
+                                <h3 class="line-clamp-1 font-bold text-sm text-gray-800">${escapeHtml(dish.name)}</h3>
+                                <p class="mt-1 font-bold text-sm text-orange-600">${formatPrice(dish.price)}</p>
+                            </div>
+                        </a>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('clearRecentDishes').addEventListener('click', () => {
+            localStorage.removeItem(RECENT_DISHES_KEY);
+            renderRecentDishes();
+            showCartToast('Đã đặt lại danh sách món đã xem.');
+        });
+
+        function rememberDishBeforeViewing(dishId) {
+            const dish = menuCategories
+                .flatMap((category) => category.dishes || [])
+                .find((item) => Number(item.id) === Number(dishId));
+            if (!dish) return;
+
+            let recent = [];
+            try {
+                const stored = JSON.parse(localStorage.getItem(RECENT_DISHES_KEY) || '[]');
+                if (Array.isArray(stored)) recent = stored;
+            } catch {
+                recent = [];
+            }
+
+            const item = {
+                id: Number(dish.id),
+                name: dish.name,
+                price: Number(dish.price) || 0,
+                image_url: dish.image_url || '',
+            };
+            recent = [item, ...recent.filter((entry) => Number(entry.id) !== item.id)].slice(0, 6);
+            localStorage.setItem(RECENT_DISHES_KEY, JSON.stringify(recent));
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            })[character]);
+        }
+
+        function getSafeImageUrl(value, fallback) {
+            if (typeof value !== 'string' || !value.trim()) return fallback;
+
+            try {
+                const url = new URL(resolveDishImageUrl(value), window.location.origin);
+                return ['http:', 'https:'].includes(url.protocol) ? url.href : fallback;
+            } catch {
+                return fallback;
             }
         }
 
         function formatPrice(price) {
-            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
+                .format(Number(price) || 0);
         }
 
         function renderMenu(categories) {
@@ -90,6 +444,20 @@
             navLinks.innerHTML = '';
             mainContainer.innerHTML = '';
             featuredContainer.innerHTML = '';
+
+            if (categories.length === 0) {
+                mainContainer.innerHTML = `
+                    <p class="rounded-xl border bg-white p-6 text-center text-gray-500">
+                        ${menuSearchInput.value.trim()
+                            ? 'Không tìm thấy món ăn phù hợp.'
+                            : 'Chưa có danh mục món ăn.'}
+                    </p>
+                `;
+                featuredContainer.innerHTML = `
+                    <p class="text-sm text-gray-500">Chưa có món nổi bật.</p>
+                `;
+                return;
+            }
 
             let allDishes = [];
 
@@ -126,21 +494,27 @@
                         const isSoldOut = !dish.is_available;
                         const opacityClass = isSoldOut ? 'opacity-50 pointer-events-none' : '';
                         const badgeHTML = isSoldOut ? '<span class="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">Hết hàng</span>' : '';
-                        const imageUrl = dish.image_url || 'https://via.placeholder.com/300x200?text=Bếp+Việt';
+                        const imageUrl = getSafeImageUrl(
+                            dish.image_url,
+                            'https://via.placeholder.com/300x200?text=B%E1%BA%BFp+Vi%E1%BB%87t',
+                        );
 
                         return `
                             <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between relative ${opacityClass}">
                                 ${badgeHTML}
                                 <div>
-                                    <img src="${imageUrl}" alt="${dish.name}" class="w-full h-40 object-cover">
+                                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" class="w-full h-40 object-cover">
                                     <div class="p-4">
-                                        <h3 class="font-bold text-base text-gray-800 line-clamp-1">${dish.name}</h3>
-                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">${dish.description || 'Chưa có mô tả'}</p>
+                                        <h3 class="font-bold text-base text-gray-800 line-clamp-1">${escapeHtml(dish.name)}</h3>
+                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">${escapeHtml(dish.description || 'Chưa có mô tả')}</p>
+                                        <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" onclick="rememberDishBeforeViewing(${Number(dish.id)})" class="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:border-orange-500 hover:bg-orange-100 mt-3">
+                                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Chi tiết món ăn
+                                        </a>
                                     </div>
                                 </div>
                                 <div class="p-4 pt-0 flex items-center justify-between mt-2">
                                     <span class="font-bold text-orange-600 text-base">${formatPrice(dish.price)}</span>
-                                    <button onclick="addToCart(${dish.id})" class="bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-orange-700 transition shadow">
+                                    <button type="button" onclick="addToCart(${Number(dish.id)}, this)" data-dish-name="${escapeHtml(dish.name)}" aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng" class="bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-orange-700 transition shadow">
                                         <i class="fa-solid fa-plus"></i>
                                     </button>
                                 </div>
@@ -152,7 +526,7 @@
                 }
 
                 section.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-4 text-gray-900 border-l-4 border-orange-500 pl-3">${cat.name}</h2>
+                    <h2 class="text-2xl font-bold mb-4 text-gray-900 border-l-4 border-orange-500 pl-3">${escapeHtml(cat.name)}</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         ${dishesHTML}
                     </div>
@@ -162,32 +536,87 @@
 
             // 3. Render món nổi bật (lấy 4 món đầu tiên còn bán)
             const featured = allDishes.filter(d => d.is_available).slice(0, 4);
-            featuredContainer.innerHTML = featured.map(dish => `
+            featuredContainer.innerHTML = featured.length > 0 ? featured.map(dish => `
                 <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between">
                     <div>
-                        <img src="${dish.image_url || 'https://via.placeholder.com/300x200?text=Bếp+Việt'}" alt="${dish.name}" class="w-full h-36 object-cover">
+                        <img src="${escapeHtml(getSafeImageUrl(dish.image_url, 'https://via.placeholder.com/300x200?text=Mon+an'))}" alt="${escapeHtml(dish.name)}" class="w-full h-36 object-cover">
                         <div class="p-3">
-                            <h3 class="font-bold text-sm text-gray-800 line-clamp-1">${dish.name}</h3>
-                            <p class="text-xs text-gray-500 mt-1 line-clamp-1">${dish.description || ''}</p>
+                            <h3 class="font-bold text-sm text-gray-800 line-clamp-1">${escapeHtml(dish.name)}</h3>
+                            <p class="text-xs text-gray-500 mt-1 line-clamp-1">${escapeHtml(dish.description || '')}</p>
+                            <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" onclick="rememberDishBeforeViewing(${Number(dish.id)})" class="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:border-orange-500 hover:bg-orange-100 mt-2">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Chi tiết món ăn
+                            </a>
                         </div>
                     </div>
                     <div class="p-3 pt-0 flex items-center justify-between">
                         <span class="font-bold text-orange-600 text-sm">${formatPrice(dish.price)}</span>
-                        <button onclick="addToCart(${dish.id})" class="bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-orange-700 transition">
+                        <button type="button" onclick="addToCart(${Number(dish.id)}, this)" data-dish-name="${escapeHtml(dish.name)}" aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng" class="bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-orange-700 transition">
                             <i class="fa-solid fa-plus text-xs"></i>
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `).join('') : '<p class="text-sm text-gray-500">Chưa có món nổi bật.</p>';
         }
 
-        function addToCart(dishId) {
-            alert(`Đã thêm món có ID: ${dishId} vào giỏ hàng!`);
-            // Logic gọi API thêm giỏ hàng /api/carts/items ở đây
+        let cartToastTimer;
+
+        function showCartToast(message, isError = false) {
+            const toast = document.getElementById('cartToast');
+            toast.textContent = message;
+            toast.setAttribute('role', isError ? 'alert' : 'status');
+            toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+            toast.classList.remove('hidden', 'bg-green-600', 'bg-red-600');
+            toast.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+            clearTimeout(cartToastTimer);
+            cartToastTimer = setTimeout(() => toast.classList.add('hidden'), 3200);
+        }
+
+        async function addToCart(dishId, button) {
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.classList.add('opacity-60', 'cursor-wait');
+
+            try {
+                const response = await fetch(`${API_BASE}/carts/items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dish_id: Number(dishId),
+                        selected_options: [],
+                        quantity: 1,
+                    }),
+                });
+                const data = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(data
+                        ? getApiErrorMessage(data, response.status)
+                        : `Backend trả về lỗi HTTP ${response.status}`);
+                }
+
+                const cartBadge = document.getElementById('cartBadge');
+                if (cartBadge) {
+                    cartBadge.textContent = String(Number(cartBadge.textContent || 0) + 1);
+                }
+                showCartToast(`Đã thêm "${button.dataset.dishName}" vào giỏ hàng.`);
+            } catch (error) {
+                showCartToast(
+                    error instanceof TypeError
+                        ? 'Không kết nối được backend. Vui lòng thử lại sau.'
+                        : error.message,
+                    true,
+                );
+            } finally {
+                button.disabled = false;
+                button.classList.remove('opacity-60', 'cursor-wait');
+                button.innerHTML = originalContent;
+            }
         }
 
         // Khởi chạy khi tải trang
-        document.addEventListener("DOMContentLoaded", fetchMenuOverview);
+        document.addEventListener("DOMContentLoaded", () => {
+            renderRecentDishes();
+            fetchMenuOverview();
+        });
     </script>
 </body>
 </html>

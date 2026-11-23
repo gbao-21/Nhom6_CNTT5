@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý đánh giá | KS25</title>
+  <link rel="icon" href="../assets/images/logo.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-root="../">
+  <header id="app-header"></header>
+
+  <main class="container">
+    <div class="card">
+      <h2>Quản lý đánh giá theo món</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div>
+          <label for="dish-id-input" style="margin-top:0;">ID món ăn</label>
+          <input id="dish-id-input" type="number" min="1" placeholder="VD: 1" style="width:160px;">
+        </div>
+        <button id="btn-load-reviews" class="btn btn-primary">Tải đánh giá</button>
+      </div>
+    </div>
+
+    <div id="review-summary" hidden class="card">
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+        <div>
+          <div class="muted" style="font-size:13px;">Trung bình</div>
+          <div id="avg-rating" style="font-size:2rem;font-weight:700;color:var(--color-primary);"></div>
+        </div>
+        <div>
+          <div class="muted" style="font-size:13px;">Tổng đánh giá</div>
+          <div id="total-reviews" style="font-size:1.5rem;font-weight:600;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="list-header">
+        <h2>Danh sách đánh giá</h2>
+      </div>
+      <div id="review-list">
+        <p class="muted">Nhập ID món và bấm "Tải đánh giá".</p>
+      </div>
+    </div>
+
+    <!-- Modal trả lời -->
+    <div id="reply-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;">
+      <div class="card" style="width:100%;max-width:480px;margin:0 16px;">
+        <h3 style="margin-top:0;">Trả lời đánh giá</h3>
+        <label for="reply-text">Nội dung trả lời *</label>
+        <textarea id="reply-text" rows="4" placeholder="Nhập nội dung trả lời..."></textarea>
+        <div class="form-actions" style="margin-top:12px;">
+          <button id="btn-submit-reply" class="btn btn-primary">Gửi trả lời</button>
+          <button id="btn-cancel-reply" class="btn">Huỷ</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="app-footer"></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/pages/admin-reviews.js"></script>
+</body>
+</html>
+

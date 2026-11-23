@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết món ăn | Food Night</title>
+  <link rel="icon" href="../assets/images/logo.svg">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dish-detail.css">
+</head>
+<body data-root="../">
+  <header id="app-header"></header>
+
+  <main class="container dish-detail-page">
+    <section class="dish-picker card" aria-label="Chọn món ăn">
+      <div>
+        <p class="eyebrow">THỰC ĐƠN FOOD NIGHT</p>
+        <h1>Chi tiết món ăn</h1>
+      </div>
+      <label class="dish-picker-control" for="dish-select">
+        <span>Chọn món</span>
+        <select id="dish-select">
+          <option value="">Đang tải danh sách món...</option>
+        </select>
+      </label>
+    </section>
+
+    <p id="dish-page-status" class="dish-page-status" role="status" aria-live="polite" hidden></p>
+
+    <section id="dish-info-card" class="dish-content-grid" hidden>
+      <article class="dish-overview card">
+        <div class="dish-image-wrap">
+          <img id="dish-image" src="../assets/images/logo.svg" alt="" class="dish-image">
+          <span id="dish-status-badge" class="dish-status-badge"></span>
+        </div>
+        <div class="dish-overview-copy">
+          <p class="eyebrow">MÓN NGON MỖI NGÀY</p>
+          <h2 id="dish-name"></h2>
+          <p id="dish-description" class="dish-description"></p>
+          <div class="dish-base-price">
+            <span>Giá từ</span>
+            <strong id="dish-price"></strong>
+          </div>
+          <div class="dish-note-strip">
+            <span aria-hidden="true">✦</span>
+            Chế biến tươi ngon sau khi bạn đặt món
+          </div>
+        </div>
+      </article>
+
+      <form id="dish-order-form" class="dish-order-card card">
+        <div class="order-heading">
+          <div>
+            <p class="eyebrow">TÙY CHỈNH THEO Ý BẠN</p>
+            <h2>Chọn tùy chọn</h2>
+          </div>
+          <span class="order-heading-icon" aria-hidden="true">＋</span>
+        </div>
+
+        <div id="dish-options" class="dish-options"></div>
+        <p id="dish-options-empty" class="dish-options-empty" hidden>Món này chưa có tùy chọn thêm.</p>
+
+        <div class="dish-order-extra">
+          <label for="dish-note">Ghi chú cho quán <span>(không bắt buộc)</span></label>
+          <textarea id="dish-note" rows="2" maxlength="300" placeholder="Ví dụ: ít cay, không hành..."></textarea>
+        </div>
+
+        <div class="quantity-row">
+          <div>
+            <strong>Số lượng</strong>
+            <span>Mỗi phần được đóng gói riêng</span>
+          </div>
+          <div class="quantity-control" aria-label="Điều chỉnh số lượng">
+            <button type="button" id="quantity-decrease" aria-label="Giảm số lượng">−</button>
+            <output id="dish-quantity" for="quantity-decrease quantity-increase">1</output>
+            <button type="button" id="quantity-increase" aria-label="Tăng số lượng">＋</button>
+          </div>
+        </div>
+
+        <div id="dish-form-error" class="dish-form-error" role="alert" hidden></div>
+        <button id="add-to-cart-button" class="add-to-cart-button" type="submit">
+          <span>Thêm vào giỏ hàng</span>
+          <strong id="dish-total-price"></strong>
+        </button>
+      </form>
+    </section>
+
+    <section id="dish-reviews-card" class="dish-reviews card" hidden>
+      <div class="reviews-heading">
+        <div>
+          <p class="eyebrow">KHÁCH HÀNG NÓI GÌ</p>
+          <h2>Đánh giá món ăn</h2>
+          <p class="muted">Phản hồi từ những đơn hàng đã hoàn tất</p>
+        </div>
+        <div class="review-score">
+          <strong id="summary-avg-number"></strong>
+          <div>
+            <span id="summary-avg-stars" aria-label="Điểm đánh giá"></span>
+            <small id="summary-total-text"></small>
+          </div>
+        </div>
+      </div>
+      <div class="review-composer">
+        <p id="dish-review-eligibility" class="review-eligibility muted" role="status" aria-live="polite"></p>
+        <button id="review-form-toggle" class="review-write-button" type="button" hidden>
+          <span aria-hidden="true">✎</span> Viết đánh giá
+        </button>
+        <form id="dish-review-form" class="review-form" hidden>
+          <fieldset class="rating-fieldset">
+            <legend>Chấm điểm món ăn</legend>
+            <div class="rating-input">
+              <input id="dish-rating-1" name="dish-rating" type="radio" value="1" required>
+              <label for="dish-rating-1" data-rating="1" aria-label="1 sao">★</label>
+              <input id="dish-rating-2" name="dish-rating" type="radio" value="2">
+              <label for="dish-rating-2" data-rating="2" aria-label="2 sao">★</label>
+              <input id="dish-rating-3" name="dish-rating" type="radio" value="3">
+              <label for="dish-rating-3" data-rating="3" aria-label="3 sao">★</label>
+              <input id="dish-rating-4" name="dish-rating" type="radio" value="4">
+              <label for="dish-rating-4" data-rating="4" aria-label="4 sao">★</label>
+              <input id="dish-rating-5" name="dish-rating" type="radio" value="5">
+              <label for="dish-rating-5" data-rating="5" aria-label="5 sao">★</label>
+            </div>
+          </fieldset>
+
+          <label for="dish-review-content">Nhận xét <span>(không bắt buộc)</span></label>
+          <textarea id="dish-review-content" rows="3" maxlength="1000" placeholder="Chia sẻ cảm nhận của bạn về món ăn..."></textarea>
+          <p id="dish-review-error" class="dish-form-error" role="alert" hidden></p>
+          <button id="dish-review-submit" class="review-submit-button" type="submit">Gửi đánh giá</button>
+        </form>
+      </div>
+      <div id="dish-reviews-list">
+        <p class="muted">Đang tải đánh giá...</p>
+      </div>
+    </section>
+  </main>
+
+  <footer id="app-footer"></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/pages/dish-detail.js"></script>
+</body>
+</html>

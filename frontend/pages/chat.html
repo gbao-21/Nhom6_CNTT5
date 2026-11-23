@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat hỗ trợ | Food Night</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="menu.html" class="text-2xl font-bold text-orange-600 flex items-center gap-2">
+        <i class="fa-solid fa-utensils"></i> Bếp Việt
+      </a>
+      <span class="text-sm text-gray-500">Trang khách hàng (demo: user ID = 1)</span>
+    </div>
+  </header>
+
+  <!-- Nội dung trang chính -->
+  <main class="max-w-3xl mx-auto px-4 py-12 text-center">
+    <h1 class="text-2xl font-bold mb-4">Chào mừng, Khách hàng!</h1>
+    <p class="text-gray-500">Bấm nút chat <span class="text-orange-600 font-semibold">góc dưới bên phải</span> để liên hệ với cửa hàng.</p>
+  </main>
+
+  <!-- Nút chat nổi -->
+  <button id="btn-open-chat"
+    class="fixed bottom-6 right-6 z-50 bg-orange-500 hover:bg-orange-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition"
+    title="Chat với cửa hàng">
+    <i class="fa-solid fa-comment-dots"></i>
+    <span id="chat-unread-badge"
+      class="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold w-5 h-5 rounded-full items-center justify-center hidden">0</span>
+  </button>
+
+  <!-- Khung chat -->
+  <div id="chat-box"
+    class="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden hidden"
+    style="height: 420px;">
+
+    <!-- Header khung chat -->
+    <div class="bg-orange-500 text-white px-4 py-3 flex justify-between items-center flex-shrink-0">
+      <span class="font-semibold text-sm">💬 Chat với cửa hàng</span>
+      <button id="btn-close-chat" class="text-white hover:text-orange-200 text-lg leading-none">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Danh sách tin nhắn -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50 text-sm"></div>
+
+    <!-- Ô nhập tin -->
+    <div class="flex items-center gap-2 px-3 py-2 border-t border-gray-200 bg-white flex-shrink-0">
+      <input id="chat-input" type="text" placeholder="Nhập tin nhắn..."
+        class="flex-1 border border-gray-300 rounded-full px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+      <button id="btn-send-chat"
+        class="bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center transition flex-shrink-0">
+        <i class="fa-solid fa-paper-plane text-sm"></i>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000/api";
+    const CUSTOMER_ID = 1;  // Demo: khách hàng có id=1
+
+    let lastMessageId = 0;
+    let pollingInterval = null;
+    let isOpen = false;
+
+    const chatBox = document.getElementById("chat-box");
+    const btnOpen = document.getElementById("btn-open-chat");
+    const btnClose = document.getElementById("btn-close-chat");
+    const msgList = document.getElementById("chat-messages");
+    const chatInput = document.getElementById("chat-input");
+    const btnSend = document.getElementById("btn-send-chat");
+    const unreadBadge = document.getElementById("chat-unread-badge");
+
+    // Mở / đóng khung chat
+    btnOpen.addEventListener("click", () => {
+      isOpen = true;
+      chatBox.classList.remove("hidden");
+      unreadBadge.classList.add("hidden");
+      unreadBadge.textContent = "0";
+      loadMessages();
+      markRead();
+    });
+
+    btnClose.addEventListener("click", () => {
+      isOpen = false;
+      chatBox.classList.add("hidden");
+    });
+
+    // Gửi tin nhắn khi bấm nút hoặc nhấn Enter
+    btnSend.addEventListener("click", sendMessage);
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    async function sendMessage() {
+      const content = chatInput.value.trim();
+      if (!content) return;
+      chatInput.value = "";
+      chatInput.disabled = true;
+      btnSend.disabled = true;
+
+      try {
+        await fetch(`${API_BASE}/chat/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customer_id: CUSTOMER_ID, sender_id: CUSTOMER_ID, content }),
+        });
+        await loadMessages();
+      } catch (err) {
+        console.error("Lỗi gửi tin:", err);
+      } finally {
+        chatInput.disabled = false;
+        btnSend.disabled = false;
+        chatInput.focus();
+      }
+    }
+
+    async function loadMessages() {
+      try {
+        const url = lastMessageId > 0
+          ? `${API_BASE}/chat/messages/${CUSTOMER_ID}?since=${lastMessageId}`
+          : `${API_BASE}/chat/messages/${CUSTOMER_ID}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const msgs = await res.json();
+        if (msgs.length === 0) return;
+
+        msgs.forEach(appendMessage);
+        lastMessageId = msgs[msgs.length - 1].id;
+        scrollToBottom();
+      } catch (err) {
+        console.error("Lỗi tải tin nhắn:", err);
+      }
+    }
+
+    async function markRead() {
+      try {
+        await fetch(`${API_BASE}/chat/messages/${CUSTOMER_ID}/read?reader_id=${CUSTOMER_ID}`, {
+          method: "PATCH",
+        });
+      } catch (_) {}
+    }
+
+    function appendMessage(msg) {
+      const isMe = msg.sender_id === CUSTOMER_ID;
+      const div = document.createElement("div");
+      div.className = `flex ${isMe ? "justify-end" : "justify-start"}`;
+      div.innerHTML = `
+        <div class="max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-snug shadow-sm
+          ${isMe ? "bg-orange-500 text-white rounded-br-sm" : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm"}">
+          ${escHtml(msg.content)}
+          <div class="text-[10px] mt-1 ${isMe ? "text-orange-100 text-right" : "text-gray-400"}">
+            ${formatTime(msg.sent_at)}
+          </div>
+        </div>`;
+      msgList.appendChild(div);
+    }
+
+    function scrollToBottom() {
+      msgList.scrollTop = msgList.scrollHeight;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function formatTime(isoStr) {
+      const d = new Date(isoStr);
+      return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // Polling mỗi 3 giây để lấy tin mới
+    setInterval(async () => {
+      if (isOpen) {
+        await loadMessages();
+        await markRead();
+      } else {
+        // Khi đóng: đếm tin chưa đọc từ nhân viên (sender_id != customer_id)
+        try {
+          const res = await fetch(`${API_BASE}/chat/messages/${CUSTOMER_ID}`);
+          if (!res.ok) return;
+          const all = await res.json();
+          const unread = all.filter(m => m.sender_id !== CUSTOMER_ID && !m.is_read).length;
+          if (unread > 0) {
+            unreadBadge.textContent = unread > 9 ? "9+" : unread;
+            unreadBadge.classList.remove("hidden");
+            unreadBadge.classList.add("flex");
+          } else {
+            unreadBadge.classList.add("hidden");
+          }
+        } catch (_) {}
+      }
+    }, 3000);
+  </script>
+</body>
+</html>
+

@@ -50,6 +50,7 @@ class OrderCreate(BaseModel):
         default=None,
         description="Danh sách món đặt. Nếu để trống (null / []), hệ thống tự lấy từ giỏ hàng của user.",
     )
+    coupon_code: str | None = Field(default=None, max_length=50, description="Mã giảm giá (không phân biệt hoa thường)")
 
 
 class OrderStatusUpdate(BaseModel):
@@ -110,6 +111,7 @@ class OrderResponse(BaseModel):
     delivery_address: str
     delivery_area_id: int
     shipping_fee: Decimal
+    coupon_code: str | None = None
     discount_amount: Decimal
     subtotal: Decimal
     total_amount: Decimal
