@@ -1,0 +1,232 @@
+[data-favorite-count] {
+  display: none;
+}
+
+[data-favorite-count]:not(.hidden) {
+  display: inline-flex;
+}
+
+.favorite-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .8);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .95);
+  color: #64748b;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .16);
+  cursor: pointer;
+  transition: color .15s ease, transform .15s ease, background .15s ease;
+}
+
+.favorite-toggle:hover {
+  transform: scale(1.06);
+  color: #e11d48;
+}
+
+.favorite-toggle[aria-pressed="true"] {
+  color: #e11d48;
+}
+
+.favorite-toggle:focus-visible {
+  outline: 3px solid #fb923c;
+  outline-offset: 2px;
+}
+
+.favorite-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 120;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #16a34a;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.favorite-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.favorite-toast.is-error {
+  background: #dc2626;
+}
+
+.favorites-page {
+  padding-top: 28px !important;
+  padding-bottom: 40px !important;
+}
+
+.favorites-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.favorites-heading h1 {
+  margin: 0;
+}
+
+.favorites-page .eyebrow {
+  margin: 0 0 5px;
+  color: #e66824;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.favorites-count {
+  margin: 5px 0 0;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 18px;
+}
+
+.favorite-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-card);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .06);
+}
+
+.favorite-card-image {
+  position: relative;
+  height: 190px;
+  background: #f3f4f6;
+}
+
+.favorite-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.favorite-card-content {
+  padding: 16px;
+}
+
+.favorite-card-content h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.favorite-card-price {
+  margin: 6px 0 14px;
+  color: #c2410c;
+  font-weight: 750;
+}
+
+.favorite-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.favorite-card-actions a,
+.favorite-card-actions button,
+.favorites-empty a {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.favorite-card-actions a:hover {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.favorite-card-actions button {
+  border-color: #ea580c;
+  background: #ea580c;
+  color: #fff;
+}
+
+.favorite-card-actions button:hover {
+  background: #c2410c;
+}
+
+.favorite-card-actions button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.favorites-empty {
+  padding: 40px 20px;
+  border: 1px dashed var(--color-border);
+  border-radius: 14px;
+  background: var(--color-card);
+  text-align: center;
+}
+
+.favorites-empty-icon {
+  margin-bottom: 12px;
+  color: #fb7185;
+  font-size: 2.5rem;
+}
+
+.favorites-empty h2 {
+  margin-bottom: 8px;
+}
+
+.favorites-empty p {
+  margin: 0 0 18px;
+  color: var(--color-muted);
+}
+
+.favorites-empty a {
+  width: fit-content;
+  flex: 0 0 auto;
+  margin: 0 auto;
+  border-color: #ea580c;
+  background: #ea580c;
+  color: #fff;
+}
+
+@media (max-width: 560px) {
+  .favorites-page {
+    padding-top: 18px !important;
+    padding-bottom: 28px !important;
+  }
+
+  .favorites-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .favorite-card-image {
+    height: 210px;
+  }
+}

@@ -6,6 +6,7 @@ Khung frontend chung cho các nhóm thực tập lớp **HN-KS25-CNTT1**. Không
 - Module gọi API `js/api.js` dùng **axios**: cấu hình `baseURL` một lần, gom xử lý lỗi một chỗ bằng interceptor
 - Trang chủ kiểm tra kết nối **Frontend → Backend → MySQL**
 - Trang **Items**: ví dụ CRUD đầy đủ (thêm / sửa / xoá / tìm kiếm) gọi sang backend FastAPI
+- Trang **Món yêu thích**: lưu / bỏ món trên thẻ món, đồng bộ danh sách bằng `localStorage`
 
 ## 1. Cấu trúc thư mục
 
@@ -13,14 +14,17 @@ Khung frontend chung cho các nhóm thực tập lớp **HN-KS25-CNTT1**. Không
 frontend/
 ├── index.html             # Trang chủ (kiểm tra kết nối)
 ├── pages/
-│   └── items.html         # Trang CRUD mẫu
+│   ├── items.html         # Trang CRUD mẫu
+│   └── favorites.html     # Danh sách món yêu thích
 ├── css/
-│   └── style.css          # Style chung, đổi màu ở :root
+│   ├── style.css          # Style chung, đổi màu ở :root
+│   └── favorites.css      # Thẻ món và trạng thái yêu thích
 ├── js/
 │   ├── config.js          # API_BASE_URL: địa chỉ backend
 │   ├── api.js             # axios instance + api.get / post / put / delete
 │   ├── utils.js           # escapeHtml, formatMoney, showToast...
 │   ├── layout.js          # Chèn header/menu/footer vào mọi trang
+│   ├── favorites.js       # Lưu, bỏ và đồng bộ món yêu thích
 │   └── pages/             # Mỗi trang 1 file JS riêng
 │       ├── home.js
 │       └── items.js

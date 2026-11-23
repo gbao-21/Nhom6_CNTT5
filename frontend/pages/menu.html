@@ -7,6 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/favorites.css">
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased">
 
@@ -16,10 +17,15 @@
             <a href="#" class="text-2xl font-bold text-orange-600 flex items-center gap-2">
                 <i class="fa-solid fa-utensils"></i> Bếp Việt
             </a>
-            <div class="flex items-center gap-4">
+            <div class="flex shrink-0 items-center gap-2 sm:gap-4">
                 <a href="items.html" aria-label="Chuyển đến trang tìm kiếm món ăn" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2">
                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    <span>Tìm món</span>
+                    <span class="hidden sm:inline">Tìm món</span>
+                </a>
+                <a href="favorites.html" aria-label="Mở danh sách món yêu thích" class="relative inline-flex shrink-0 items-center gap-2 rounded-full bg-rose-50 p-2.5 text-rose-600 transition hover:bg-rose-100 sm:px-4">
+                    <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                    <span class="hidden sm:inline">Yêu thích</span>
+                    <span data-favorite-count class="absolute -right-1 -top-1 hidden h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-xs font-bold text-white">0</span>
                 </a>
                 <div class="relative hidden md:block">
                     <input type="text" id="searchInput" placeholder="Tìm kiếm món ăn..." class="pl-10 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 w-64">
@@ -117,6 +123,7 @@
         </div>
     </div>
 
+    <script src="../js/favorites.js"></script>
     <script>
         // ── Chat widget ──────────────────────────────────────────────────────
         const CHAT_API = "http://127.0.0.1:8000/api";
@@ -368,7 +375,8 @@
                     'https://via.placeholder.com/300x200?text=M%C3%B3n+an',
                 );
                 return `
-                    <article class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                    <article class="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                        ${FavoriteDishes.buttonMarkup(dish)}
                         <a href="dish-detail.html?id=${encodeURIComponent(String(dish.id))}" class="block">
                             <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" loading="lazy" class="h-36 w-full object-cover">
                             <div class="p-3">
@@ -516,7 +524,7 @@
                 if (cat.dishes && cat.dishes.length > 0) {
                     dishesHTML = cat.dishes.map(dish => {
                         const isSoldOut = !dish.is_available;
-                        const opacityClass = isSoldOut ? 'opacity-50 pointer-events-none' : '';
+                        const opacityClass = isSoldOut ? 'opacity-50' : '';
                         const badgeHTML = isSoldOut ? '<span class="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">Hết hàng</span>' : '';
                         const imageUrl = getSafeImageUrl(
                             dish.image_url,
@@ -525,6 +533,7 @@
 
                         return `
                             <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between relative ${opacityClass}">
+                                ${FavoriteDishes.buttonMarkup(dish)}
                                 ${badgeHTML}
                                 <div>
                                     <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(dish.name)}" class="w-full h-40 object-cover">
@@ -538,7 +547,7 @@
                                 </div>
                                 <div class="p-4 pt-0 flex items-center justify-between mt-2">
                                     <span class="font-bold text-orange-600 text-base">${formatPrice(dish.price)}</span>
-                                    <button type="button" onclick="addToCart(${Number(dish.id)}, this)" data-dish-name="${escapeHtml(dish.name)}" aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng" class="bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-orange-700 transition shadow">
+                                    <button type="button" onclick="addToCart(${Number(dish.id)}, this)" data-dish-name="${escapeHtml(dish.name)}" aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ hàng" ${isSoldOut ? 'disabled' : ''} class="bg-orange-600 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-orange-700 transition shadow disabled:cursor-not-allowed disabled:opacity-50">
                                         <i class="fa-solid fa-plus"></i>
                                     </button>
                                 </div>
@@ -561,7 +570,8 @@
             // 3. Render món nổi bật (lấy 4 món đầu tiên còn bán)
             const featured = allDishes.filter(d => d.is_available).slice(0, 4);
             featuredContainer.innerHTML = featured.length > 0 ? featured.map(dish => `
-                <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between">
+                <div class="relative bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col justify-between">
+                    ${FavoriteDishes.buttonMarkup(dish)}
                     <div>
                         <img src="${escapeHtml(getSafeImageUrl(dish.image_url, 'https://via.placeholder.com/300x200?text=Mon+an'))}" alt="${escapeHtml(dish.name)}" class="w-full h-36 object-cover">
                         <div class="p-3">
