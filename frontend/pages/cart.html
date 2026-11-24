@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
+
 <body class="min-h-screen bg-gray-50 text-gray-800 antialiased">
   <header class="sticky top-0 z-40 border-b bg-white shadow-sm">
     <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
@@ -22,7 +24,9 @@
     </div>
   </header>
 
-  <div id="cart-message" class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg" role="status" aria-live="polite"></div>
+  <div id="cart-message"
+    class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
+    role="status" aria-live="polite"></div>
 
   <main class="mx-auto max-w-7xl px-4 py-8 md:py-12">
     <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
@@ -31,7 +35,8 @@
         <h1 class="text-2xl font-extrabold text-gray-900 md:text-3xl">Giỏ hàng của bạn</h1>
         <p id="cart-item-count" class="mt-1 text-sm text-gray-500">Đang tải giỏ hàng...</p>
       </div>
-      <button id="clear-cart-button" type="button" class="hidden rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50">
+      <button id="clear-cart-button" type="button"
+        class="hidden rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50">
         <i class="fa-regular fa-trash-can mr-1" aria-hidden="true"></i>
         Xóa giỏ hàng
       </button>
@@ -68,10 +73,16 @@
         <p class="mt-4 rounded-xl bg-orange-50 p-3 text-xs leading-5 text-orange-800">
           Phí giao hàng có thể thay đổi theo khu vực nhận hàng.
         </p>
-        <a href="menu.html" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-700">
-          <i class="fa-solid fa-utensils" aria-hidden="true"></i>
-          Tiếp tục mua món
-        </a>
+          <a id="proceed-checkout-button" href="checkout.html"
+            class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-700">
+            <i class="fa-solid fa-credit-card" aria-hidden="true"></i>
+            Tiến hành thanh toán
+          </a>
+          <a href="menu.html"
+            class="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+            <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+            Tiếp tục mua món
+          </a>
       </aside>
     </div>
   </main>
@@ -86,4 +97,5 @@
   <script src="../js/utils.js"></script>
   <script src="../js/pages/cart.js"></script>
 </body>
+
 </html>
