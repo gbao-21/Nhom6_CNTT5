@@ -8,6 +8,11 @@ const menuItems = [
         file: "admin-dashboard.html"
     },
     {
+        name: "Xử lý đơn hàng",
+        icon: "fa-bell-concierge",
+        file: "admin-orders.html"
+    },
+    {
         name: "Quản lý món ăn",
         icon: "fa-utensils",
         file: "admin-items.html"

@@ -1,15 +1,72 @@
 """CRUD cho bảng orders và order_items."""
-from sqlalchemy import select
+from datetime import date, datetime, time
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.order import Order, OrderStatusHistory
 from app.schemas.order import OrderStatusUpdate
 
 
-def get_orders(db: Session, user_id: int | None = None) -> list[Order]:
-    query = select(Order).order_by(Order.id.desc())
+def get_orders(
+    db: Session,
+    user_id: int | None = None,
+    status: str | None = None,
+    active_only: bool = False,
+    q: str | None = None,
+    order_date: date | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    sort: str = "desc",
+) -> list[Order]:
+    """Lấy danh sách đơn hàng hỗ trợ lọc cho nhân viên:
+    - user_id: lọc theo khách hàng
+    - status: lọc theo trạng thái cụ thể (PENDING, CONFIRMED, PREPARING, DELIVERING, COMPLETED, CANCELLED)
+    - active_only: True -> chỉ lấy đơn mới / đang làm (PENDING, CONFIRMED, PREPARING, DELIVERING)
+    - q: tìm kiếm theo mã đơn (order_code), SĐT người nhận (recipient_phone), hoặc tên người nhận
+    - order_date / start_date / end_date: lọc theo ngày tạo đơn
+    - sort: 'asc' (đơn cũ lên trước theo thời gian) hoặc 'desc' (đơn mới nhất lên trước)
+    """
+    query = select(Order)
+
     if user_id is not None:
         query = query.where(Order.user_id == user_id)
+
+    if status is not None and status.strip():
+        query = query.where(Order.status == status.strip().upper())
+    elif active_only:
+        query = query.where(
+            Order.status.in_(["PENDING", "CONFIRMED", "PREPARING", "DELIVERING"])
+        )
+
+    if q is not None and q.strip():
+        keyword = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                Order.order_code.ilike(keyword),
+                Order.recipient_phone.ilike(keyword),
+                Order.recipient_name.ilike(keyword),
+            )
+        )
+
+    if order_date is not None:
+        day_start = datetime.combine(order_date, time.min)
+        day_end = datetime.combine(order_date, time.max)
+        query = query.where(Order.created_at >= day_start, Order.created_at <= day_end)
+    else:
+        if start_date is not None:
+            query = query.where(
+                Order.created_at >= datetime.combine(start_date, time.min)
+            )
+        if end_date is not None:
+            query = query.where(
+                Order.created_at <= datetime.combine(end_date, time.max)
+            )
+
+    if sort.lower() == "asc":
+        query = query.order_by(Order.created_at.asc(), Order.id.asc())
+    else:
+        query = query.order_by(Order.created_at.desc(), Order.id.desc())
+
     return list(db.scalars(query))
 
 
@@ -73,5 +130,3 @@ def add_order_status_history(
     db.commit()
     db.refresh(history)
     return history
-
-
