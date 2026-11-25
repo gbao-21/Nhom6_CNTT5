@@ -3,29 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat nhân viên | Food Night</title>
+  <title>Chat với khách hàng | Food Night Admin</title>
+  <link rel="icon" href="../assets/images/logo.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/admin-layout.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex flex-col overflow-hidden">
 
-  <!-- Header -->
-  <header class="bg-white shadow-sm flex-shrink-0">
-    <div class="max-w-full px-4 py-3 flex justify-between items-center">
-      <span class="text-xl font-bold text-orange-600 flex items-center gap-2">
-        <i class="fa-solid fa-headset"></i> Trang chat nhân viên
-      </span>
-      <span class="text-sm text-gray-500">Nhân viên ID = 2 (demo)</span>
-    </div>
-  </header>
-
-  <!-- Nội dung chính: 2 cột -->
-  <div class="flex flex-1 overflow-hidden">
+  <!-- Nội dung chính bên trong khung Admin (chiều cao trừ 65px topbar) -->
+  <div class="flex flex-1 overflow-hidden" style="height: calc(100vh - 65px);">
 
     <!-- Cột trái: danh sách khách -->
     <aside class="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
-      <div class="px-4 py-3 border-b border-gray-200 font-semibold text-sm text-gray-600 uppercase tracking-wide">
-        Khách hàng
+      <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <span class="font-semibold text-sm text-gray-600 uppercase tracking-wide">Khách hàng</span>
+        <span class="text-xs text-gray-400">Nhân viên ID = 2</span>
       </div>
       <div id="conversation-list" class="flex-1 overflow-y-auto divide-y divide-gray-100">
         <p class="text-sm text-gray-400 px-4 py-6 text-center">Đang tải...</p>
@@ -55,6 +48,8 @@
       </div>
     </section>
   </div>
+
+  <script src="../js/admin-layout.js"></script>
 
   <script>
     const API_BASE = "http://127.0.0.1:8000/api";
