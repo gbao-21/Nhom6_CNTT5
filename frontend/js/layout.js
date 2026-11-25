@@ -7,7 +7,6 @@
 
 // Thêm trang mới vào menu: thêm 1 dòng vào mảng này (đường dẫn tính từ thư mục frontend/)
 const MENU = [
-  { href: "index.html", label: "Trang chủ" },
   { href: "pages/menu.html", label: "Thực đơn" },
   { href: "pages/dish-detail.html", label: "Chi tiết món & Đánh giá" },
   { href: "pages/my-orders.html", label: "Đơn của tôi" },
@@ -25,10 +24,6 @@ function renderLayout() {
 
   document.getElementById("app-header").innerHTML = `
     <div class="container header-inner">
-      <a href="${root}index.html" class="brand">
-        <img src="${root}assets/images/logo.svg" alt="logo" width="28" height="28">
-        <span>${CONFIG.APP_NAME}</span>
-      </a>
       <nav class="nav">${links}</nav>
     </div>`;
 
