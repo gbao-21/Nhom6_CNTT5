@@ -26,6 +26,11 @@ const menuItems = [
         name: "Quản lý đánh giá",
         icon: "fa-star",
         file: "admin-reviews.html"
+    },
+    {
+        name: "Chat với khách hàng",
+        icon: "fa-comments",
+        file: "staff-chat.html"
     }
 ];
 
