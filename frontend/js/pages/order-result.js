@@ -176,6 +176,12 @@ function renderOrderSuccessView(order) {
   // Gắn link nút "Theo dõi đơn hàng" truyền kèm order_id sang trang Đơn của tôi
   btnTrackOrderPage.href = `my-orders.html?order_id=${encodeURIComponent(order.id)}`;
 
+  // Nút huỷ đơn chỉ hiển thị khi đơn còn ở trạng thái PENDING (Chờ xác nhận)
+  const btnCancelResult = document.getElementById("btn-cancel-order-result");
+  if (btnCancelResult) {
+    btnCancelResult.classList.toggle("hidden", order.status !== "PENDING");
+  }
+
   renderStatusTimeline(order);
   renderDeliveryAndPaymentInfo(order);
   renderOrderedItemsAndSummary(order);
@@ -460,4 +466,33 @@ async function initOrderResultPage(forceSuccess = false) {
 }
 
 initOrderResultPage();
+
+// Tự động cập nhật trạng thái đơn mỗi 15 giây
+setInterval(async () => {
+  if (!currentOrder?.id) return;
+  try {
+    const fresh = await api.get(`/orders/my-orders/${currentOrder.id}`);
+    renderOrderSuccessView(fresh);
+  } catch (_) {}
+}, 15000);
+
+const btnCancelOrderResult = document.getElementById("btn-cancel-order-result");
+if (btnCancelOrderResult) {
+  btnCancelOrderResult.addEventListener("click", async () => {
+    if (!currentOrder?.id) return;
+    const reason = window.prompt("Nhập lý do huỷ đơn hàng:", "Đổi ý / Muốn đổi món");
+    if (reason === null || !reason.trim()) return;
+    try {
+      const updated = await api.post(`/orders/${currentOrder.id}/cancel`, {
+        reason: reason.trim(),
+        user_id: currentOrder.user_id || 1,
+        role: "CUSTOMER",
+      });
+      renderOrderSuccessView(updated);
+      showResultToast("Đã huỷ đơn hàng thành công!");
+    } catch (error) {
+      showResultToast(error.message || "Không thể huỷ đơn hàng.", true);
+    }
+  });
+}
 

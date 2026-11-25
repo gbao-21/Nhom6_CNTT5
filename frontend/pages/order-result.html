@@ -167,15 +167,24 @@
               <i class="fa-solid fa-truck-fast mr-1.5 text-orange-500" aria-hidden="true"></i>
               Theo dõi trạng thái đơn hàng
             </h2>
-            <p class="text-xs text-gray-500">Cập nhật theo thời gian thực từ nhà bếp</p>
+            <p class="text-xs text-gray-500">Tự động cập nhật trạng thái mỗi 15 giây</p>
           </div>
-          <button
-            id="btn-refresh-status"
-            type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50">
-            <i class="fa-solid fa-rotate" aria-hidden="true"></i>
-            Làm mới trạng thái
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              id="btn-cancel-order-result"
+              type="button"
+              class="hidden inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-700">
+              <i class="fa-solid fa-ban" aria-hidden="true"></i>
+              Huỷ đơn hàng
+            </button>
+            <button
+              id="btn-refresh-status"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50">
+              <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+              Làm mới trạng thái
+            </button>
+          </div>
         </div>
 
         <!-- 5 bước trạng thái đơn hàng -->
