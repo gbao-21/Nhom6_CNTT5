@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kết quả đặt món | Bếp Việt</title>
+  <link rel="icon" href="../assets/images/logo.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-800 antialiased">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 border-b bg-white shadow-sm">
+    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
+      <a href="menu.html" class="flex items-center gap-2 text-xl font-extrabold text-orange-600">
+        <i class="fa-solid fa-bowl-food" aria-hidden="true"></i>
+        <span>Bếp Việt</span>
+      </a>
+      <div class="flex items-center gap-5 text-sm font-semibold">
+        <a href="menu.html" class="text-gray-600 transition hover:text-orange-600">
+          <i class="fa-solid fa-utensils mr-1" aria-hidden="true"></i>
+          Thực đơn
+        </a>
+        <a href="cart.html" class="text-gray-600 transition hover:text-orange-600">
+          <i class="fa-solid fa-cart-shopping mr-1" aria-hidden="true"></i>
+          Giỏ hàng
+        </a>
+        <a href="my-orders.html" class="text-gray-600 transition hover:text-orange-600">
+          <i class="fa-solid fa-receipt mr-1" aria-hidden="true"></i>
+          Đơn của tôi
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast thông báo -->
+  <div id="result-toast" class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg" role="status" aria-live="polite"></div>
+
+  <main class="mx-auto max-w-4xl px-4 py-8 md:py-12">
+    <!-- Thanh công cụ hỗ trợ kiểm thử nhanh 2 trạng thái (Thành công / Báo lỗi món vừa hết) -->
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-2.5 text-xs text-gray-600">
+      <span>
+        <i class="fa-solid fa-circle-info mr-1 text-orange-500" aria-hidden="true"></i>
+        Trang kết quả đặt món (Hỗ trợ xem kết quả đơn vừa đặt và cảnh báo khi món vừa hết hàng)
+      </span>
+      <div class="flex items-center gap-2">
+        <button id="btn-demo-success" type="button" class="rounded-lg bg-green-600 px-2.5 py-1 font-bold text-white transition hover:bg-green-700">
+          Xem kết quả Thành công
+        </button>
+        <button id="btn-demo-outofstock" type="button" class="rounded-lg bg-red-600 px-2.5 py-1 font-bold text-white transition hover:bg-red-700">
+          Giả lập lỗi Món vừa hết
+        </button>
+      </div>
+    </div>
+
+    <!-- 1. KHỐI BÁO LỖI KHI MÓN VỪA HẾT HÀNG (Ẩn khi đặt thành công) -->
+    <section id="out-of-stock-view" class="hidden rounded-2xl border border-red-200 bg-white p-6 shadow-sm sm:p-8">
+      <div class="flex flex-col items-center text-center">
+        <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
+          <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        </div>
+        <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-red-600">
+          Không thể hoàn tất đặt món
+        </span>
+        <h1 class="mt-2 text-2xl font-extrabold text-gray-900">Rất tiếc, có món trong đơn vừa hết hàng!</h1>
+        <p id="out-of-stock-message" class="mt-2 max-w-xl text-sm text-red-600 font-semibold">
+          Một số món bạn chọn vừa hết hàng trong lúc đặt. Hệ thống đã giữ nguyên giỏ hàng để bạn điều chỉnh.
+        </p>
+      </div>
+
+      <!-- Danh sách món bị hết cần xử lý -->
+      <div id="out-of-stock-items" class="mx-auto mt-6 max-w-lg space-y-3"></div>
+
+      <!-- Ghi nhận lựa chọn thanh toán đã lưu -->
+      <div class="mx-auto mt-5 max-w-lg rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 text-xs text-blue-800">
+        <i class="fa-solid fa-bookmark mr-1.5 text-blue-600" aria-hidden="true"></i>
+        Lựa chọn thanh toán <strong id="saved-payment-badge-error">Thanh toán khi nhận hàng (COD)</strong> và địa chỉ của bạn đã được lưu sẵn cho lần đặt lại.
+      </div>
+
+      <div class="mt-7 flex flex-wrap justify-center gap-3">
+        <button id="btn-remove-unavailable-and-retry" type="button" class="hidden inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-700">
+          <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          Xoá món đã hết & Quay lại thanh toán
+        </button>
+        <a href="checkout.html" class="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-gray-800">
+          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+          Quay lại trang Thanh toán
+        </a>
+        <a href="cart.html" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+          <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+          Chỉnh sửa giỏ hàng
+        </a>
+        <a href="menu.html" class="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-5 py-3 text-sm font-bold text-orange-700 transition hover:bg-orange-100">
+          <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+          Chọn món khác
+        </a>
+      </div>
+    </section>
+
+    <!-- 2. KHỐI ĐẶT MÓN THÀNH CÔNG KÈM MÃ ĐƠN VÀ NÚT THEO DÕI ĐƠN -->
+    <section id="order-success-view" class="space-y-6">
+      <!-- Card Header Thành công + Mã đơn + Nút Theo dõi đơn -->
+      <div class="rounded-2xl border border-green-100 bg-white p-6 text-center shadow-sm sm:p-8">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600 shadow-inner">
+          <i class="fa-solid fa-check" aria-hidden="true"></i>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-green-700">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+          Đặt hàng thành công
+        </span>
+        <h1 class="mt-2 text-2xl font-extrabold text-gray-900 sm:text-3xl">Cảm ơn bạn đã đặt món tại Bếp Việt!</h1>
+        <p class="mt-1.5 text-sm text-gray-500">
+          Đơn hàng của bạn đã được tiếp nhận và đang ở trạng thái <strong id="result-status-text" class="text-orange-600">Chờ xác nhận</strong>.
+        </p>
+
+        <!-- Hộp Mã đơn hàng nổi bật + nút Sao chép -->
+        <div class="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/60 px-5 py-3">
+          <div class="text-left">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-gray-400">Mã đơn hàng</span>
+            <strong id="result-order-code" class="text-xl font-extrabold tracking-wide text-orange-600">Đang tải...</strong>
+          </div>
+          <button
+            id="btn-copy-order-code"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition hover:bg-gray-50">
+            <i class="fa-regular fa-copy" aria-hidden="true"></i>
+            Sao chép mã
+          </button>
+        </div>
+
+        <!-- Thông báo đã lưu lựa chọn thanh toán cho lần sau -->
+        <div class="mx-auto mt-4 max-w-md rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-2.5 text-xs text-emerald-800">
+          <i class="fa-solid fa-floppy-disk mr-1.5 text-emerald-600" aria-hidden="true"></i>
+          Đã lưu phương thức thanh toán <strong id="saved-payment-method-label">Thanh toán khi nhận hàng (COD)</strong> cho lần đặt món tiếp theo.
+        </div>
+
+        <!-- Các nút hành động chính: Nút Theo dõi đơn & Tiếp tục mua món -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <a
+            id="btn-track-order-page"
+            href="my-orders.html"
+            class="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-6 py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-orange-700">
+            <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+            Theo dõi đơn hàng
+          </a>
+          <button
+            id="btn-scroll-timeline"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700 transition hover:bg-orange-100">
+            <i class="fa-solid fa-timeline" aria-hidden="true"></i>
+            Xem tiến trình ngay bên dưới
+          </button>
+          <a
+            href="menu.html"
+            class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+            <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+            Đặt thêm món mới
+          </a>
+        </div>
+      </div>
+
+      <!-- Khối Theo dõi tiến trình đơn hàng (Timeline trực quan) -->
+      <div id="order-tracking-section" class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold text-gray-900">
+              <i class="fa-solid fa-truck-fast mr-1.5 text-orange-500" aria-hidden="true"></i>
+              Theo dõi trạng thái đơn hàng
+            </h2>
+            <p class="text-xs text-gray-500">Cập nhật theo thời gian thực từ nhà bếp</p>
+          </div>
+          <button
+            id="btn-refresh-status"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50">
+            <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+            Làm mới trạng thái
+          </button>
+        </div>
+
+        <!-- 5 bước trạng thái đơn hàng -->
+        <div id="status-steps-container" class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <!-- Render bằng JS -->
+        </div>
+
+        <!-- Lịch sử trạng thái chi tiết -->
+        <div id="status-history-list" class="mt-5 border-t border-gray-100 pt-4 text-xs text-gray-600"></div>
+      </div>
+
+      <!-- Chi tiết thông tin nhận hàng & Danh sách món đã đặt -->
+      <div class="grid gap-6 md:grid-cols-2">
+        <!-- Thông tin giao hàng & Thanh toán -->
+        <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h2 class="mb-4 text-base font-bold text-gray-900">
+            <i class="fa-solid fa-address-card mr-1.5 text-orange-500" aria-hidden="true"></i>
+            Thông tin nhận hàng & Thanh toán
+          </h2>
+          <dl id="result-delivery-info" class="space-y-3 text-sm">
+            <!-- Render bằng JS -->
+          </dl>
+        </div>
+
+        <!-- Danh sách món & Tổng tiền -->
+        <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h2 class="mb-4 text-base font-bold text-gray-900">
+            <i class="fa-solid fa-receipt mr-1.5 text-orange-500" aria-hidden="true"></i>
+            Chi tiết các món đã đặt
+          </h2>
+          <div id="result-items-list" class="max-h-60 space-y-3 overflow-y-auto pr-1 text-sm"></div>
+          <dl id="result-price-summary" class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm"></dl>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t bg-white py-5 text-center text-sm text-gray-500">
+    © 2026 Bếp Việt · Món ngon giao tận nơi
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/pages/order-result.js"></script>
+</body>
+</html>
+

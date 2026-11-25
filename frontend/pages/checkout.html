@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thanh toán đơn hàng | Bếp Việt</title>
+  <link rel="icon" href="../assets/images/logo.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-800 antialiased">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 border-b bg-white shadow-sm">
+    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
+      <a href="menu.html" class="flex items-center gap-2 text-xl font-extrabold text-orange-600">
+        <i class="fa-solid fa-bowl-food" aria-hidden="true"></i>
+        <span>Bếp Việt</span>
+      </a>
+      <div class="flex items-center gap-5 text-sm font-semibold">
+        <a href="cart.html" class="text-gray-600 transition hover:text-orange-600">
+          <i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i>
+          Quay lại giỏ hàng
+        </a>
+        <a href="my-orders.html" class="text-gray-600 transition hover:text-orange-600">
+          <i class="fa-solid fa-receipt mr-1" aria-hidden="true"></i>
+          Đơn của tôi
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast thông báo nổi -->
+  <div id="checkout-toast" class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg" role="status" aria-live="polite"></div>
+
+  <main class="mx-auto max-w-7xl px-4 py-8 md:py-10">
+    <!-- Tiêu đề trang -->
+    <div class="mb-7">
+      <p class="mb-1 text-xs font-extrabold uppercase tracking-[.16em] text-orange-600">BẾP VIỆT · CHECKOUT</p>
+      <h1 class="text-2xl font-extrabold text-gray-900 md:text-3xl">Thanh toán đơn hàng</h1>
+      <p class="mt-1 text-sm text-gray-500">Kiểm tra thông tin nhận hàng, chọn giờ giao và hoàn tất đặt món.</p>
+    </div>
+
+    <!-- Hộp báo lỗi tổng hợp rõ ràng -->
+    <div id="checkout-error-banner" class="mb-6 hidden rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm" role="alert">
+      <div class="flex items-start gap-3">
+        <i class="fa-solid fa-circle-exclamation mt-0.5 text-base text-red-600" aria-hidden="true"></i>
+        <div class="flex-1">
+          <strong class="font-bold">Vui lòng kiểm tra lại thông tin:</strong>
+          <ul id="checkout-error-list" class="mt-1.5 list-disc space-y-1 pl-5"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hộp cảnh báo từ server (món hết hàng / đổi giá) -->
+    <div id="server-warning-banner" class="mb-6 hidden rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm" role="alert">
+      <div class="flex items-start gap-3">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5 text-base text-amber-600" aria-hidden="true"></i>
+        <div class="flex-1">
+          <strong class="font-bold">Thông báo cập nhật từ cửa hàng:</strong>
+          <ul id="server-warning-list" class="mt-1.5 list-disc space-y-1 pl-5"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nội dung chính: 2 cột -->
+    <form id="checkout-form" novalidate class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <!-- CỘT TRÁI: Địa chỉ, Giờ giao, Mã giảm giá, Phương thức thanh toán -->
+      <div class="space-y-6">
+
+        <!-- 1. SỔ ĐỊA CHỈ & THÔNG TIN NHẬN HÀNG -->
+        <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-lg font-bold text-gray-900">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-orange-100 text-sm font-extrabold text-orange-600">1</span>
+              Địa chỉ nhận hàng
+            </h2>
+            <button id="btn-toggle-new-address" type="button" class="inline-flex items-center gap-1.5 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600 transition hover:bg-orange-100">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Thêm vào sổ địa chỉ
+            </button>
+          </div>
+
+          <!-- Danh sách chọn nhanh từ Sổ địa chỉ -->
+          <div class="mb-4">
+            <label class="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">
+              Chọn từ sổ địa chỉ đã lưu
+            </label>
+            <div id="address-book-list" class="grid gap-3 sm:grid-cols-2">
+              <!-- Render bằng JS -->
+            </div>
+          </div>
+
+          <!-- Form chi tiết người nhận & địa chỉ -->
+          <div class="border-t border-gray-100 pt-4">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="recipient-name" class="mb-1 block text-sm font-semibold text-gray-700">
+                  Họ và tên người nhận <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="recipient-name"
+                  type="text"
+                  placeholder="VD: Thái Nguyễn Gia Bảo"
+                  class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+                <p id="err-recipient-name" class="mt-1 hidden text-xs font-medium text-red-600"></p>
+              </div>
+
+              <div>
+                <label for="recipient-phone" class="mb-1 block text-sm font-semibold text-gray-700">
+                  Số điện thoại <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="recipient-phone"
+                  type="tel"
+                  placeholder="VD: 0901234567"
+                  class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+                <p id="err-recipient-phone" class="mt-1 hidden text-xs font-medium text-red-600"></p>
+              </div>
+            </div>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="delivery-area" class="mb-1 block text-sm font-semibold text-gray-700">
+                  Khu vực giao hàng (tính phí ship) <span class="text-red-500">*</span>
+                </label>
+                <select
+                  id="delivery-area"
+                  class="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+                  <option value="">-- Đang tải khu vực --</option>
+                </select>
+                <p id="err-delivery-area" class="mt-1 hidden text-xs font-medium text-red-600"></p>
+              </div>
+
+              <div>
+                <label for="address-label" class="mb-1 block text-sm font-semibold text-gray-700">
+                  Nhãn sổ địa chỉ (tuỳ chọn)
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    id="address-label"
+                    type="text"
+                    placeholder="VD: Nhà riêng, Ký túc xá..."
+                    class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+                  <button
+                    id="btn-save-address"
+                    type="button"
+                    title="Lưu địa chỉ hiện tại vào sổ địa chỉ"
+                    class="shrink-0 rounded-xl border border-orange-200 bg-orange-50 px-3.5 py-2.5 text-xs font-bold text-orange-600 transition hover:bg-orange-100">
+                    Lưu sổ
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <label for="delivery-address" class="mb-1 block text-sm font-semibold text-gray-700">
+                Địa chỉ nhận hàng chi tiết <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="delivery-address"
+                type="text"
+                placeholder="Số nhà, ngõ, đường, phường..."
+                class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+              <p id="err-delivery-address" class="mt-1 hidden text-xs font-medium text-red-600"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. GIỜ GIAO HÀNG (GIAO NGAY HOẶC HẸN GIỜ) -->
+        <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-orange-100 text-sm font-extrabold text-orange-600">2</span>
+            Thời gian giao hàng
+          </h2>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label id="card-delivery-now" class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-orange-500 bg-orange-50/40 p-4 transition">
+              <input
+                type="radio"
+                name="delivery_time_mode"
+                value="NOW"
+                checked
+                class="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500">
+              <div>
+                <div class="font-bold text-gray-900">
+                  <i class="fa-solid fa-bolt mr-1 text-orange-500" aria-hidden="true"></i>
+                  Giao ngay
+                </div>
+                <p class="mt-0.5 text-xs text-gray-500">Dự kiến giao trong 30 – 45 phút sau khi xác nhận</p>
+              </div>
+            </label>
+
+            <label id="card-delivery-scheduled" class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-gray-200 bg-white p-4 transition hover:border-gray-300">
+              <input
+                type="radio"
+                name="delivery_time_mode"
+                value="SCHEDULED"
+                class="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500">
+              <div>
+                <div class="font-bold text-gray-900">
+                  <i class="fa-regular fa-clock mr-1 text-orange-500" aria-hidden="true"></i>
+                  Hẹn giờ giao
+                </div>
+                <p class="mt-0.5 text-xs text-gray-500">Chọn thời gian nhận hàng trong khung giờ mở cửa (07:00 – 23:00)</p>
+              </div>
+            </label>
+          </div>
+
+          <!-- Ô chọn ngày giờ khi chọn Hẹn giờ -->
+          <div id="scheduled-time-box" class="mt-4 hidden rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+            <label for="desired-delivery-at" class="mb-1.5 block text-sm font-semibold text-gray-800">
+              Chọn ngày & giờ muốn nhận món <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="desired-delivery-at"
+              type="datetime-local"
+              class="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 sm:max-w-xs">
+            <p class="mt-1.5 text-xs text-gray-500">
+              <i class="fa-solid fa-circle-info mr-1 text-orange-500" aria-hidden="true"></i>
+              Giờ mở cửa phục vụ: <strong>07:00 – 23:00</strong> hàng ngày.
+            </p>
+            <p id="err-desired-delivery" class="mt-1 hidden text-xs font-semibold text-red-600"></p>
+          </div>
+        </section>
+
+        <!-- 3. PHƯƠNG THỨC THANH TOÁN (CHỌN COD & LƯU CHO LẦN SAU) -->
+        <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-lg font-bold text-gray-900">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-orange-100 text-sm font-extrabold text-orange-600">3</span>
+              Phương thức thanh toán
+            </h2>
+            <span id="saved-payment-hint" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <i class="fa-solid fa-bookmark" aria-hidden="true"></i>
+              Tự động lưu cho lần đặt sau
+            </span>
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label id="card-payment-cod" class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-orange-500 bg-orange-50/40 p-4 transition">
+              <input
+                type="radio"
+                name="payment_method"
+                value="COD"
+                checked
+                class="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500">
+              <div>
+                <div class="font-bold text-gray-900">
+                  <i class="fa-solid fa-money-bill-wave mr-1 text-green-600" aria-hidden="true"></i>
+                  Thanh toán khi nhận hàng (COD)
+                </div>
+                <p class="mt-0.5 text-xs text-gray-500">Thanh toán bằng tiền mặt trực tiếp cho tài xế khi nhận món</p>
+              </div>
+            </label>
+
+            <label id="card-payment-bank" class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-gray-200 bg-white p-4 transition hover:border-gray-300">
+              <input
+                type="radio"
+                name="payment_method"
+                value="BANK_TRANSFER"
+                class="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500">
+              <div>
+                <div class="font-bold text-gray-900">
+                  <i class="fa-solid fa-building-columns mr-1 text-blue-600" aria-hidden="true"></i>
+                  Chuyển khoản ngân hàng
+                </div>
+                <p class="mt-0.5 text-xs text-gray-500">Chuyển khoản qua mã QR hoặc số tài khoản cửa hàng</p>
+              </div>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <!-- CỘT PHẢI: MÃ GIẢM GIÁ, TÓM TẮT ĐƠN, PHÍ SHIP & NÚT ĐẶT MÓN -->
+      <aside class="space-y-5 lg:sticky lg:top-24">
+        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-gray-900">Tóm tắt đơn hàng</h2>
+            <a href="cart.html" class="text-xs font-bold text-orange-600 hover:underline">Sửa giỏ hàng</a>
+          </div>
+
+          <!-- Danh sách món ăn trong đơn -->
+          <div id="checkout-items-list" class="max-h-72 space-y-3 overflow-y-auto pr-1 text-sm">
+            <p class="py-6 text-center text-gray-400">Đang tải danh sách món...</p>
+          </div>
+
+          <!-- Ô nhập Mã giảm giá -->
+          <div class="mt-5 border-t border-gray-100 pt-4">
+            <label for="voucher-code" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-600">
+              <i class="fa-solid fa-ticket mr-1 text-orange-500" aria-hidden="true"></i>
+              Mã giảm giá / Khuyến mãi
+            </label>
+            <div class="flex gap-2">
+              <input
+                id="voucher-code"
+                type="text"
+                placeholder="Nhập mã (VD: GIAM10, GIAM20K)"
+                class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm uppercase focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+              <button
+                id="btn-apply-voucher"
+                type="button"
+                class="shrink-0 rounded-xl bg-gray-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-gray-800">
+                Áp dụng
+              </button>
+              <button
+                id="btn-remove-voucher"
+                type="button"
+                class="hidden shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100">
+                Bỏ mã
+              </button>
+            </div>
+            <!-- Gợi ý chọn nhanh mã giảm giá -->
+            <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+              <span class="text-gray-400">Gợi ý:</span>
+              <button type="button" data-voucher="GIAM10" class="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 font-semibold text-orange-700 hover:bg-orange-100">GIAM10 (-10%)</button>
+              <button type="button" data-voucher="GIAM20K" class="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 font-semibold text-orange-700 hover:bg-orange-100">GIAM20K (-20k)</button>
+              <button type="button" data-voucher="FREESHIP" class="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 font-semibold text-orange-700 hover:bg-orange-100">FREESHIP</button>
+            </div>
+            <p id="voucher-feedback" class="mt-1.5 hidden text-xs font-semibold"></p>
+          </div>
+
+          <!-- Bảng tính tiền chi tiết -->
+          <dl class="mt-5 space-y-3 border-t border-gray-100 pt-4 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-gray-500">Tạm tính (<span id="summary-total-qty">0</span> món)</dt>
+              <dd id="summary-subtotal" class="font-semibold text-gray-800">0 ₫</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-gray-500">
+                Phí giao hàng
+                <span id="summary-area-name" class="block text-xs text-gray-400"></span>
+              </dt>
+              <dd id="summary-shipping" class="font-semibold text-gray-800">0 ₫</dd>
+            </div>
+            <div id="summary-discount-row" class="hidden flex justify-between gap-4 text-green-700">
+              <dt class="font-medium">Giảm giá (<span id="summary-voucher-label"></span>)</dt>
+              <dd id="summary-discount" class="font-bold">-0 ₫</dd>
+            </div>
+          </dl>
+
+          <div class="my-4 border-t border-dashed border-gray-200"></div>
+
+          <div class="flex items-center justify-between gap-4">
+            <strong class="text-base text-gray-900">Tổng thanh toán</strong>
+            <strong id="summary-total" class="text-2xl font-extrabold text-orange-600">0 ₫</strong>
+          </div>
+
+          <!-- Nút Đặt món -->
+          <button
+            id="btn-place-order"
+            type="submit"
+            class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3.5 text-base font-extrabold text-white shadow-md transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">
+            <i class="fa-solid fa-check-circle" aria-hidden="true"></i>
+            <span>Đặt món ngay</span>
+          </button>
+
+          <p class="mt-3 text-center text-xs text-gray-400">
+            Đơn hàng mới sẽ ở trạng thái <strong>Chờ xác nhận</strong>.
+          </p>
+        </div>
+      </aside>
+    </form>
+
+    <!-- Màn hình Đặt món thành công (ẩn mặc định) -->
+    <section id="order-success-modal" class="hidden rounded-2xl border border-green-100 bg-white p-8 text-center shadow-sm md:p-12">
+      <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
+        <i class="fa-solid fa-check" aria-hidden="true"></i>
+      </div>
+      <h2 class="text-2xl font-extrabold text-gray-900">Đặt món thành công!</h2>
+      <p class="mt-2 text-sm text-gray-600">
+        Mã đơn hàng của bạn: <strong id="success-order-code" class="text-orange-600"></strong>
+      </p>
+      <div id="success-order-details" class="mx-auto mt-5 max-w-md rounded-xl bg-gray-50 p-4 text-left text-sm text-gray-700"></div>
+      <div class="mt-6 flex flex-wrap justify-center gap-3">
+        <a id="success-view-order-link" href="my-orders.html" class="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-700">
+          <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+          Xem đơn của tôi
+        </a>
+        <a href="menu.html" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+          <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+          Tiếp tục mua món
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t bg-white py-5 text-center text-sm text-gray-500">
+    © 2026 Bếp Việt · Món ngon giao tận nơi
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/pages/checkout.js"></script>
+</body>
+</html>
+
