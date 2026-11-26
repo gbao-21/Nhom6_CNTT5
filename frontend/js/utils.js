@@ -19,6 +19,14 @@ function formatDateTime(value) {
     d.toLocaleDateString("vi-VN");
 }
 
+function resolveUploadUrl(url) {
+  if (typeof url !== "string" || !url) return "";
+  if (url.startsWith("/uploads/")) {
+    return `${CONFIG.API_BASE_URL.replace(/\/api\/?$/, "")}${url}`;
+  }
+  return url;
+}
+
 // Hiện thông báo nhỏ ở góc màn hình. type: "success" | "error"
 function showToast(message, type = "success") {
   const toast = document.createElement("div");

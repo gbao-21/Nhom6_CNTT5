@@ -225,7 +225,7 @@ async function loadOrder(silent = false) {
     if (order.status === "COMPLETED") {
       try {
         const reviewData = await api.get(`/reviews/order/${orderId}`);
-        renderDishReviews(reviewData, orderId);
+        renderDishReviews(reviewData, orderId, currentOrderItems);
         reviewsSection.hidden = false;
       } catch (_) {
         reviewsSection.hidden = true;
@@ -397,7 +397,7 @@ function starsHtml(rating) {
 }
 
 function starInputHtml(dishId) {
-  return [5, 4, 3, 2, 1]
+  return [1, 2, 3, 4, 5]
     .map(
       (n) => `
     <input type="radio" name="rating_${dishId}" id="star_${dishId}_${n}" value="${n}" style="display:none;">
@@ -511,32 +511,48 @@ reorderButton.addEventListener("click", async () => {
   await reorderItems(currentOrderItems, reorderButton);
 });
 
-function renderDishReviews(data, orderId) {
-  const reviews = data.reviews || [];
+function renderDishReviews(data, orderId, orderItems) {
+  const reviews = Array.isArray(data.reviews) ? data.reviews : [];
   const isCompleted = data.order_status === "COMPLETED";
 
-  if (reviews.length === 0 && !isCompleted) {
+  if (!isCompleted) {
     dishReviewsList.innerHTML = `<p class="muted">Đơn hàng chưa có thông tin để hiển thị.</p>`;
     return;
   }
 
-  if (reviews.length === 0 && isCompleted) {
-    dishReviewsList.innerHTML =
-      `<p class="muted">Đơn hàng chưa được đánh giá món nào. Hãy dùng form bên dưới.</p>` +
-      renderNewReviewForm(orderId, null);
+  const dishes = new Map();
+  orderItems.forEach((item) => {
+    const dishId = Number(item.dish_id);
+    if (!Number.isInteger(dishId) || dishId <= 0 || dishes.has(dishId)) return;
+    dishes.set(dishId, { dish_id: dishId, dish_name: item.dish_name, review: null });
+  });
+
+  reviews.forEach((review) => {
+    const dishId = Number(review.dish_id);
+    if (!Number.isInteger(dishId) || dishId <= 0) return;
+    const dish = dishes.get(dishId);
+    dishes.set(dishId, {
+      dish_id: dishId,
+      dish_name: dish?.dish_name || review.dish_name,
+      review,
+    });
+  });
+
+  if (dishes.size === 0) {
+    dishReviewsList.innerHTML = `<p class="muted">Đơn hàng không có món khả dụng để đánh giá.</p>`;
     return;
   }
 
-  dishReviewsList.innerHTML = reviews
-    .map((r) => {
-      const hasReview = r.id !== null && r.id !== undefined;
+  dishReviewsList.innerHTML = Array.from(dishes.values())
+    .map(({ dish_id, dish_name, review }) => {
+      const hasReview = review?.id !== null && review?.id !== undefined;
       return `
       <div style="border:1px solid var(--color-border);border-radius:var(--radius);padding:16px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <strong>${escapeHtml(r.dish_name || "Món " + r.dish_id)}</strong>
+          <strong>${escapeHtml(dish_name || "Món " + dish_id)}</strong>
           ${
             hasReview
-              ? `<span style="color:#f59e0b;">${starsHtml(r.rating)} ${r.rating}/5</span>`
+              ? `<span style="color:#f59e0b;">${starsHtml(review.rating)} ${review.rating}/5</span>`
               : isCompleted
               ? `<span class="muted" style="font-size:13px;">Chưa đánh giá</span>`
               : ""
@@ -545,12 +561,12 @@ function renderDishReviews(data, orderId) {
         ${
           hasReview
             ? `
-          <p style="margin:6px 0;">${escapeHtml(r.content || "")}</p>
-          ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="" style="max-height:100px;border-radius:4px;">` : ""}
-          <div class="muted" style="font-size:12px;margin-top:4px;">${r.created_at ? formatDateTime(r.created_at) : ""}</div>
+          <p style="margin:6px 0;">${escapeHtml(review.content || "")}</p>
+          ${review.image_url ? `<img src="${escapeHtml(resolveUploadUrl(review.image_url))}" alt="" style="max-height:100px;border-radius:4px;">` : ""}
+          <div class="muted" style="font-size:12px;margin-top:4px;">${review.created_at ? formatDateTime(review.created_at) : ""}</div>
         `
             : isCompleted
-            ? renderNewReviewForm(orderId, r.dish_id, r.dish_name)
+            ? renderNewReviewForm(orderId, dish_id, dish_name)
             : ""
         }
       </div>`;
@@ -559,28 +575,22 @@ function renderDishReviews(data, orderId) {
 }
 
 function renderNewReviewForm(orderId, dishId, dishName) {
-  const dishIdInput = dishId
-    ? `<input type="hidden" id="dish_id_field_${dishId}" value="${dishId}">`
-    : `<div>
-        <label>ID món ăn *</label>
-        <input type="number" id="dish_id_field_new" min="1" placeholder="Nhập ID món" style="width:120px;">
-       </div>`;
-  const title = dishId ? dishName || `Món ${dishId}` : "Món mới";
+  const title = dishName || `Món ${dishId}`;
 
   return `
-    <form class="review-form" data-order="${orderId}" data-dish="${dishId || ""}" style="margin-top:12px;padding:12px;background:var(--color-bg);border-radius:var(--radius);">
-      <strong style="display:block;margin-bottom:8px;">Đánh giá${dishId ? ": " + escapeHtml(title) : ""}</strong>
-      ${dishIdInput}
+    <form class="review-form" data-order="${orderId}" data-dish="${dishId}" style="margin-top:12px;padding:12px;background:var(--color-bg);border-radius:var(--radius);">
+      <strong style="display:block;margin-bottom:8px;">Đánh giá: ${escapeHtml(title)}</strong>
       <div style="margin:8px 0;">
         <label style="margin:0 0 4px;">Số sao *</label>
-        <div class="star-input" data-dish="${dishId || "new"}">
-          ${starInputHtml(dishId || "new")}
+        <div class="star-input" data-dish="${dishId}">
+          ${starInputHtml(dishId)}
         </div>
       </div>
       <label>Nhận xét</label>
       <textarea class="review-content" rows="2" placeholder="Nhập nhận xét..." style="margin-top:4px;"></textarea>
-      <label>Ảnh (URL)</label>
-      <input class="review-image" type="url" placeholder="https://...">
+      <label>Ảnh minh hoạ (tuỳ chọn)</label>
+      <input class="review-image" type="file" accept="image/jpeg,image/png,image/webp">
+      <small class="muted">JPG, PNG hoặc WEBP, tối đa 5MB.</small>
       <button type="submit" class="btn btn-primary btn-small" style="margin-top:10px;">Gửi đánh giá</button>
     </form>`;
 }
@@ -591,18 +601,13 @@ dishReviewsList.addEventListener("submit", async (event) => {
   if (!form.classList.contains("review-form")) return;
 
   const orderId = Number(form.dataset.order);
-  let dishId = form.dataset.dish ? Number(form.dataset.dish) : null;
-
-  if (!dishId) {
-    const manualInput = form.querySelector("#dish_id_field_new");
-    dishId = manualInput ? Number(manualInput.value) : null;
-  }
-  if (!dishId) {
-    showToast("Nhập ID món ăn", "error");
+  const dishId = Number(form.dataset.dish);
+  if (!Number.isInteger(dishId) || dishId <= 0) {
+    showToast("Không xác định được món ăn cần đánh giá.", "error");
     return;
   }
 
-  const dishKey = form.dataset.dish || "new";
+  const dishKey = String(dishId);
   const rating = selectedRatings[dishKey];
   if (!rating) {
     showToast("Chọn số sao", "error");
@@ -610,12 +615,20 @@ dishReviewsList.addEventListener("submit", async (event) => {
   }
 
   const content = form.querySelector(".review-content").value.trim();
-  const imageUrl = form.querySelector(".review-image").value.trim() || null;
+  const imageFile = form.querySelector(".review-image").files[0];
 
   const submitBtn = form.querySelector("button[type=submit]");
   submitBtn.disabled = true;
 
   try {
+    let imageUrl = null;
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append("file", imageFile);
+      const uploadResult = await api.upload("/reviews/upload-image", formData);
+      imageUrl = uploadResult.image_url;
+    }
+
     await api.post("/reviews", {
       order_id: orderId,
       dish_id: dishId,

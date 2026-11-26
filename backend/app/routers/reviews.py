@@ -7,7 +7,10 @@ Phân quyền đơn giản:
 - POST /api/reviews/{id}/reply  -> STAFF (role=STAFF qua query)
 - PATCH /api/reviews/{id}/hide  -> ADMIN (role=ADMIN qua query)
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.crud import review as review_crud
@@ -22,6 +25,13 @@ from app.schemas.review import (
 )
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
+UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads" / "reviews"
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+ALLOWED_IMAGES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 def require_staff(role: str = Query(default="STAFF")):
@@ -43,6 +53,34 @@ def require_admin(role: str = Query(default="ADMIN")):
 )
 def create_review(data: ReviewCreate, db: Session = Depends(get_db)):
     return review_crud.create_review(db, data)
+
+
+@router.post("/upload-image", summary="Tải ảnh đánh giá lên")
+async def upload_review_image(file: UploadFile = File(...)):
+    extension = ALLOWED_IMAGES.get(file.content_type)
+    if extension is None:
+        raise HTTPException(status_code=400, detail="Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP")
+
+    content = await file.read(MAX_IMAGE_SIZE + 1)
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="Dung lượng ảnh không được vượt quá 5MB")
+
+    valid_image = (
+        file.content_type == "image/jpeg" and content.startswith(b"\xff\xd8\xff")
+    ) or (
+        file.content_type == "image/png" and content.startswith(b"\x89PNG\r\n\x1a\n")
+    ) or (
+        file.content_type == "image/webp"
+        and content.startswith(b"RIFF")
+        and content[8:12] == b"WEBP"
+    )
+    if not valid_image:
+        raise HTTPException(status_code=400, detail="File tải lên không phải ảnh hợp lệ")
+
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{extension}"
+    (UPLOAD_DIR / filename).write_bytes(content)
+    return {"image_url": f"/uploads/reviews/{filename}"}
 
 
 # ── Public: Đánh giá theo món ────────────────────────────────────────────────

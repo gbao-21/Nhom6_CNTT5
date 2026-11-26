@@ -55,6 +55,18 @@
   white-space: nowrap;
 }
 
+.star-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.star-input label {
+  display: inline-flex;
+  margin: 0;
+  line-height: 1;
+}
+
 @media (max-width: 480px) {
   .completed-order-heading {
     flex-direction: column;

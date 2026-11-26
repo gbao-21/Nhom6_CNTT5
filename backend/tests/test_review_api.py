@@ -7,17 +7,23 @@
 - Cửa hàng trả lời đánh giá;
 - Admin ẩn đánh giá vi phạm.
 """
+import asyncio
 import os
 import sys
 import unittest
 from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from starlette.datastructures import Headers
 
 from app.crud import review as review_crud
 from app.db.base import Base
@@ -27,6 +33,7 @@ from app.models.dish import Dish
 from app.models.order import Order, OrderItem
 from app.models.review import Review
 from app.models.user import User
+from app.routers import reviews as review_router
 from app.schemas.review import ReviewCreate, ReviewReplyRequest
 
 
@@ -226,6 +233,37 @@ class TestReviewAPI(unittest.TestCase):
         )
         self.assertEqual(replied.shop_reply, "Cảm ơn bạn đã thưởng thức ạ!")
         self.assertIsNotNone(replied.replied_at)
+
+    def test_upload_review_image_saves_valid_png(self):
+        image_bytes = b"\x89PNG\r\n\x1a\nvalid image data"
+        upload = UploadFile(
+            filename="review.png",
+            file=BytesIO(image_bytes),
+            headers=Headers({"content-type": "image/png"}),
+        )
+
+        with TemporaryDirectory() as upload_dir:
+            with patch.object(review_router, "UPLOAD_DIR", Path(upload_dir)):
+                result = asyncio.run(review_router.upload_review_image(upload))
+
+            self.assertTrue(result["image_url"].startswith("/uploads/reviews/"))
+            saved_file = Path(upload_dir) / Path(result["image_url"]).name
+            self.assertEqual(saved_file.read_bytes(), image_bytes)
+
+    def test_upload_review_image_rejects_invalid_image_content(self):
+        upload = UploadFile(
+            filename="review.png",
+            file=BytesIO(b"not an image"),
+            headers=Headers({"content-type": "image/png"}),
+        )
+
+        with TemporaryDirectory() as upload_dir:
+            with patch.object(review_router, "UPLOAD_DIR", Path(upload_dir)):
+                with self.assertRaises(HTTPException) as ctx:
+                    asyncio.run(review_router.upload_review_image(upload))
+
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("không phải ảnh hợp lệ", ctx.exception.detail)
 
 
 if __name__ == "__main__":
