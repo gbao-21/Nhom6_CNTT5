@@ -68,7 +68,7 @@ function renderReviews(reviews) {
         </div>
       </div>
       <p style="margin:8px 0 4px;">${escapeHtml(r.content || "")}</p>
-      ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="ảnh đánh giá" style="max-height:120px;border-radius:4px;margin-top:4px;">` : ""}
+      ${r.image_url ? `<img src="${escapeHtml(resolveUploadUrl(r.image_url))}" alt="ảnh đánh giá" style="max-height:120px;border-radius:4px;margin-top:4px;">` : ""}
       ${r.shop_reply ? `
         <div style="margin-top:10px;padding:10px;background:var(--color-bg);border-radius:var(--radius);border-left:3px solid var(--color-primary);">
           <strong>Phản hồi của cửa hàng:</strong>

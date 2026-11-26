@@ -343,7 +343,7 @@ function renderReviews(reviews) {
           ? `<p>${escapeHtml(review.content)}</p>`
           : `<p class="muted"><em>Khách hàng không để lại nhận xét bằng lời.</em></p>`}
         ${review.image_url
-          ? `<img class="review-image" src="${escapeHtml(review.image_url)}" alt="Ảnh thực tế từ khách hàng">`
+          ? `<img class="review-image" src="${escapeHtml(resolveUploadUrl(review.image_url))}" alt="Ảnh thực tế từ khách hàng">`
           : ""}
         ${review.shop_reply
           ? `<div class="shop-reply">

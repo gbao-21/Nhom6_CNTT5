@@ -15,8 +15,15 @@ const MENU = [
 function renderLayout() {
   const root = document.body.dataset.root || "./";
   const currentPath = window.location.pathname;
+  const isHomePage = currentPath.endsWith("/index.html") || currentPath.endsWith("/");
+  const isMyOrdersPage = currentPath.endsWith("/pages/my-orders.html");
+  const isDishDetailPage = currentPath.endsWith("/pages/dish-detail.html");
 
-  const links = MENU.map((item) => {
+  const visibleMenu = isHomePage || isMyOrdersPage || isDishDetailPage
+    ? MENU.filter((item) => item.href !== "pages/my-orders.html")
+    : MENU;
+
+  const links = visibleMenu.map((item) => {
     const isActive = currentPath.endsWith("/" + item.href) ||
       (item.href === "index.html" && currentPath.endsWith("/"));
     return `<a href="${root}${item.href}" class="${isActive ? "active" : ""}">${item.label}</a>`;
